@@ -33,7 +33,7 @@ TF get_boundary_integral( Grid &grid, Bounds &bounds, const Pt *positions, const
 
         bool is_ext = false;
         bounds.for_each_intersection( lc, [&]( auto &cp, const auto &space_func ) {
-            cp.for_each_boundary_item( space_func, radial_func.func_for_final_cp_integration(), grid, [&]( auto boundary_item ) {
+            cp.for_each_boundary_item( space_func, radial_func.func_for_final_cp_integration(), grid, nb_diracs, positions, [&]( auto boundary_item ) {
                 if ( boundary_item.id == num_dirac )
                     is_ext = true;
             }, weights[ num_dirac ] );
@@ -48,7 +48,7 @@ TF get_boundary_integral( Grid &grid, Bounds &bounds, const Pt *positions, const
             bounds.for_each_intersection( lc, [&]( auto &cp, const auto &space_func ) {
                 cp.add_centroid_contrib( centroid, mass, space_func, radial_func.func_for_final_cp_integration(), weights[ num_dirac ] );
 
-                cp.for_each_boundary_item( space_func, radial_func.func_for_final_cp_integration(), grid, [&]( auto boundary_item ) {
+                cp.for_each_boundary_item( space_func, radial_func.func_for_final_cp_integration(), grid, nb_diracs, positions, [&]( auto boundary_item ) {
                     if ( boundary_item.id != num_dirac && boundary_item.id != -1ul ) {
                         for( std::size_t i = 0; ; ++i ) {
                             if ( i == n_ng.size() ) {

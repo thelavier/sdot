@@ -186,35 +186,35 @@ bool ConvexPolyhedron2<Pc>::all_pos( const F &f ) const {
 }
 
 template<class Pc> template<class S,class R,class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_measure( const S &sf, const R &rf, const Grid &grid, const std::function<void( TF, CI )> &f, TF weight ) const {
-    for_each_boundary_item( sf, rf, grid, [&]( const BoundaryItem &boundary_item ) {
+void ConvexPolyhedron2<Pc>::for_each_boundary_measure( const S &sf, const R &rf, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( TF, CI )> &f, TF weight ) const {
+    for_each_boundary_item( sf, rf, grid, nb_diracs, positions, [&]( const BoundaryItem &boundary_item ) {
         f( boundary_item.measure, boundary_item.id );
     }, weight );
 }
 
 // COMPRESSIBLE HESSIAN BOUNDARY (IGNORE)
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::function<void( const BoundaryItem &boundary_item )> &cb, TF weight ) const {
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &cb, TF weight ) const {
     throw std::runtime_error( "not implemented: " __FILE__ + std::to_string( __LINE__ ) );
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::ExpWmR2db<TF> &f, const Grid &grid, const std::function<void( const BoundaryItem &boundary_item )> &cb, TF weight ) const {
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::ExpWmR2db<TF> &f, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &cb, TF weight ) const {
     TODO;
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::Arfd &f, const Grid &grid, const std::function<void( const BoundaryItem &boundary_item )> &cb, TF weight ) const {
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::Arfd &f, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &cb, TF weight ) const {
     TODO;
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::WmR2 &f, const Grid &grid, const std::function<void( const BoundaryItem &boundary_item )> &cb, TF weight ) const {
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::WmR2 &f, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &cb, TF weight ) const {
     TODO;
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::Unit &f, const Grid &grid, const std::function<void( const BoundaryItem &boundary_item )> &cb, TF weight ) const {
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::Unit &f, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &cb, TF weight ) const {
     if ( nb_points() == 0 ) {
         if ( sphere_radius > 0 )
             TODO;
@@ -250,12 +250,12 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polyno
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::R2 &f, const Grid &grid, const std::function<void( const BoundaryItem &boundary_item )> &cb, TF weight0 ) const {
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::R2 &f, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &cb, TF weight0 ) const {
     TODO;
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::Arfd &arf, const Grid &grid, const std::function<void( const BoundaryItem &boundary_item )> &f, TF weight ) const {
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::Arfd &arf, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &f, TF weight ) const {
     using std::sqrt;
     using std::pow;
 
@@ -376,12 +376,28 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
 
 // COMPRESSIBLE HESSIAN BOUNDARY
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::function<void( const BoundaryItem &boundary_item )> &f, TF weight ) const {
-    throw std::runtime_error( "not implemented: " __FILE__ + std::to_string( __LINE__ ) );
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &f, TF weight ) const {    
+    
+    for( size_t i1 = 0, i0 = nb_points() - 1; i1 < nb_points(); i0 = i1++ ) {
+        BoundaryItem item;
+        auto zi = sphere_center;
+        auto p0 = point(i0);
+        auto p1 = point(i1);
+        item.points[ 0 ] = p0;
+        item.points[ 1 ] = p1;
+
+        TI num_dirac_1 = cut_ids[ i0 ];
+        item.id = num_dirac_1;
+
+        TI m_num_dirac_1 = num_dirac_1 % nb_diracs, d_num_dirac_1 = num_dirac_1 / nb_diracs;
+        auto zk = grid.sym( positions[ m_num_dirac_1 ], int( d_num_dirac_1 ) - 1 );
+
+        item.measure = 0;
+    }
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::ExpWmR2db<TF> &e, const Grid &grid, const std::function<void( const BoundaryItem &boundary_item )> &f, TF weight ) const {
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::ExpWmR2db<TF> &e, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &f, TF weight ) const {
     using std::sqrt;
     using std::erf;
     using std::exp;
@@ -426,7 +442,7 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::WmR2 &e, const Grid &grid, const std::function<void( const BoundaryItem &boundary_item )> &f, TF weight ) const {
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::WmR2 &e, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &f, TF weight ) const {
     using std::sqrt;
     using std::pow;
 
@@ -467,12 +483,12 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::R2 &, const Grid &grid, const std::function<void( const BoundaryItem &boundary_item )> &/*f*/, TF /*weight*/ ) const {
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::R2 &, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &/*f*/, TF /*weight*/ ) const {
     TODO;
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::Unit &, const Grid &grid, const std::function<void( const BoundaryItem &boundary_item )> &f, TF /*weight*/ ) const {
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::Unit &, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &f, TF /*weight*/ ) const {
     if ( nb_points() == 0 ) {
         if ( sphere_radius >= 0 ) {
             BoundaryItem item;
@@ -1806,11 +1822,62 @@ typename ConvexPolyhedron2<Pc>::Pt ConvexPolyhedron2<Pc>::random_point() const {
     return ( 1 - a - b ) * A + a * B + b * C;
 }
 
-// COMPRESSIBLE VOLUME AND INTERNAL ENERGY
+// COMPRESSIBLE INTERNAL ENERGY
+template<class Pc>
+typename Pc::TF ConvexPolyhedron2<Pc>::internal_energy( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, TF psi ) const {
+    TF vol = 0;
+    TF ie = 0;
+    TF tol = 1e-16;
+    // for each segment
+    for (size_t i1 = 0, i0 = nb_points() - 1; i1 < nb_points(); i0 = i1++) {
+        if (arcs[i0]) {
+
+            throw std::runtime_error("Arc integration not implemented.");
+
+        } else {
+            auto z = func.seed_inverse(sphere_center);
+            auto w = func.weight_inverse(psi, z);
+            auto p0 = point(i0);
+            auto p1 = point(i1);
+            
+            // Compute the edge vector and then the normal.
+            auto edge = p0 - p1;
+            Point2<TF> normal = rot90(edge); // rotates edge by 90 degrees
+            normal = normalized(normal);     // get a unit normal
+
+            // Evaluate the cost function at the endpoints.
+            double cfuncp1 = func(p1, z, w);
+            double cfuncp0 = func(p0, z, w);
+
+            // Compute the denominator that appears in integration formula.
+            TF denom = (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
+
+            if ( std::fabs(denom) > tol ) {
+                vol += (z[1] * z[1] * normal[1] * func.fsa1(w - cfuncp1)) / (func.f_cor * func.f_cor * func.g) * norm_2(p1 - p0) / (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
+                vol -= (z[1] * z[1] * normal[1] * func.fsa1(w - cfuncp0)) / (func.f_cor * func.f_cor * func.g) * norm_2(p1 - p0) / (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
+
+                ie -= (z[1] * z[1] * normal[1] * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp1) * (w - cfuncp1) * std::pow(func.fsa1(w - cfuncp1), func.gamma) * (func.gamma - 1) / ((3 * func.gamma - 2) * (p1[1] - p0[1] + z[0] * (p0[0] - p1[0])));
+                ie += (z[1] * z[1] * normal[1] * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp0) * (w - cfuncp0) * std::pow(func.fsa1(w - cfuncp0), func.gamma) * (func.gamma - 1) / ((3 * func.gamma - 2) * (p1[1] - p0[1] + z[0] * (p0[0] - p1[0])));
+
+            } else {
+                // Use the Limit expression
+                ie -= (z[1] * normal[1] * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp0) * std::pow(func.fsa1(w - cfuncp0), func.gamma);
+
+                vol -= (z[1] * normal[1] / (func.f_cor * func.f_cor * func.g)) * norm_2(p1 - p0) * (2 * func.gamma - 1) * func.fsa1(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
+            }
+        }
+    }
+
+    ie *= func.kappa * func.c_p / func.gamma; 
+    ie -= func.pi_0 * vol;
+
+    return ie;
+}
+
+// COMPRESSIBLE VOLUME 
 template<class Pc>
 typename Pc::TF ConvexPolyhedron2<Pc>::integration( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, TF psi ) const {
     TF vol = 0;
-    TF ie = 0;
     TF tol = 1e-16;
     // for each segment
     for (size_t i1 = 0, i0 = nb_points() - 1; i1 < nb_points(); i0 = i1++) {
@@ -1848,14 +1915,9 @@ typename Pc::TF ConvexPolyhedron2<Pc>::integration( const SpaceFunctions::Consta
                 vol += (z[1] * z[1] * normal[1] * func.fsa1(w - cfuncp1)) / (func.f_cor * func.f_cor * func.g) * norm_2(p1 - p0) / (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
                 vol -= (z[1] * z[1] * normal[1] * func.fsa1(w - cfuncp0)) / (func.f_cor * func.f_cor * func.g) * norm_2(p1 - p0) / (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
 
-                ie -= (z[1] * z[1] * normal[1] * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp1) * (w - cfuncp1) * std::pow(func.fsa1(w - cfuncp1), func.gamma) * (func.gamma - 1) / ((3 * func.gamma - 2) * (p1[1] - p0[1] + z[0] * (p0[0] - p1[0])));
-                ie += (z[1] * z[1] * normal[1] * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp0) * (w - cfuncp0) * std::pow(func.fsa1(w - cfuncp0), func.gamma) * (func.gamma - 1) / ((3 * func.gamma - 2) * (p1[1] - p0[1] + z[0] * (p0[0] - p1[0])));
-
             } else {
                 // Use the Limit expression
                 vol -= (z[1] * normal[1] / (func.f_cor * func.f_cor * func.g)) * norm_2(p1 - p0) * (2 * func.gamma - 1) * func.fsa1(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
-
-                ie -= (z[1] * normal[1] * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp0) * std::pow(func.fsa1(w - cfuncp0), func.gamma);
             }
 
             // debugStream << "  Intermediate res: " << res << "\n";
@@ -1865,9 +1927,6 @@ typename Pc::TF ConvexPolyhedron2<Pc>::integration( const SpaceFunctions::Consta
 
         }
     }
-
-    ie *= func.kappa * func.c_p / func.gamma; 
-    ie -= func.pi_0 * vol;
 
     return vol;
 }

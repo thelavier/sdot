@@ -64,7 +64,7 @@ int get_der_centroids_and_integrals_wrt_weight_and_positions( std::vector<TI> &m
             cp.add_centroid_contrib( centroid, mass, space_func, radial_func.func_for_final_cp_integration(), d0_weight );
 
             TF coeff = 0.5;
-            cp.for_each_boundary_item( space_func, radial_func.func_for_final_cp_integration(), [&]( auto boundary_item ) {
+            cp.for_each_boundary_item( space_func, radial_func.func_for_final_cp_integration(), grid, [&]( auto boundary_item ) {
                 auto boundary_measure = boundary_item.measure;
                 auto num_dirac_1 = boundary_item.id;
 

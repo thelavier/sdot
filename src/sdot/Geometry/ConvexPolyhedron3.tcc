@@ -159,23 +159,23 @@ void ConvexPolyhedron3<Pc>::intersect_with( const ConvexPolyhedron3 &cp ) {
         plane_cut( fp.cut_O, fp.cut_N, fp.cut_id );
 }
 
-template<class Pc>
-void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &/*rf*/, const std::function<void(TF,CI)> &f, TF weight ) const {
+template<class Pc> template<class Grid>
+void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::function<void(TF,CI)> &f, TF weight ) const {
     TODO;
 }
 
-template<class Pc>
-void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::ExpWmR2db<TF> &/*rf*/, const std::function<void(TF,CI)> &f, TF weight ) const {
+template<class Pc> template<class Grid>
+void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::ExpWmR2db<TF> &/*rf*/, const Grid &grid, const std::function<void(TF,CI)> &f, TF weight ) const {
     TODO;
 }
 
-template<class Pc>
-void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::WmR2 &/*rf*/, const std::function<void(TF,CI)> &f, TF weight ) const {
+template<class Pc> template<class Grid>
+void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::WmR2 &/*rf*/, const Grid &grid, const std::function<void(TF,CI)> &f, TF weight ) const {
     TODO;
 }
 
-template<class Pc>
-void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::Unit &/*rf*/, const std::function<void(TF,CI)> &f, TF weight ) const {
+template<class Pc> template<class Grid>
+void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::Unit &/*rf*/, const Grid &grid, const std::function<void(TF,CI)> &f, TF weight ) const {
     //    // round parts
     //    if ( flat_surfaces.empty() ) {
     //        if ( sphere_radius >= 0 )
@@ -204,28 +204,28 @@ void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Con
     //    }
 }
 
-template<class Pc>
-void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::R2 &/*rf*/, const std::function<void(TF,CI)> &f, TF weight ) const {
+template<class Pc> template<class Grid>
+void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::R2 &/*rf*/, const Grid &grid, const std::function<void(TF,CI)> &f, TF weight ) const {
     TODO;
 }
 
-template<class Pc> template<class Fu>
-void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &/*rf*/, const Fu &f, TF weight ) const {
+template<class Pc> template<class Fu, class Grid>
+void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const Fu &f, TF weight ) const {
     TODO;
 }
 
-template<class Pc> template<class Fu>
-void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::ExpWmR2db<TF> &/*rf*/, const Fu &f, TF weight ) const {
+template<class Pc> template<class Fu, class Grid>
+void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::ExpWmR2db<TF> &/*rf*/, const Grid &grid, const Fu &f, TF weight ) const {
     TODO;
 }
 
-template<class Pc> template<class Fu>
-void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::WmR2 &/*rf*/, const Fu &f, TF weight ) const {
+template<class Pc> template<class Fu, class Grid>
+void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::WmR2 &/*rf*/, const Grid &grid, const Fu &f, TF weight ) const {
     TODO;
 }
 
-template<class Pc> template<class Fu>
-void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::Unit &/*rf*/, const Fu &f, TF weight ) const {
+template<class Pc> template<class Fu, class Grid>
+void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::Unit &/*rf*/, const Grid &grid, const Fu &f, TF weight ) const {
     // flat parts
     for( const Face &fp : faces ) {
         BoundaryItem item;
@@ -267,8 +267,8 @@ void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
     }
 }
 
-template<class Pc> template<class Fu>
-void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::R2 &/*rf*/, const Fu &f, TF weight ) const {
+template<class Pc> template<class Fu, class Grid>
+void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::R2 &/*rf*/, const Grid &grid, const Fu &f, TF weight ) const {
     TODO;
 }
 

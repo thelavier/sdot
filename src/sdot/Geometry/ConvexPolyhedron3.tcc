@@ -2,6 +2,7 @@
 #include "Internal/AreaOutput.h"
 #include "ConvexPolyhedron3.h"
 #include "Point2.h"
+#include "Point3.h"
 //#include <iomanip>
 
 #ifdef PD_WANT_STAT
@@ -159,6 +160,7 @@ void ConvexPolyhedron3<Pc>::intersect_with( const ConvexPolyhedron3 &cp ) {
         plane_cut( fp.cut_O, fp.cut_N, fp.cut_id );
 }
 
+// COMPRESSIBLE HESSIAN BOUNDARY
 template<class Pc> template<class Grid>
 void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void(TF,CI)> &f, TF weight ) const {
     TODO;
@@ -209,6 +211,7 @@ void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Con
     TODO;
 }
 
+// COMPRESSIBLE HESSIAN BOUNDARY
 template<class Pc> template<class Fu, class Grid>
 void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const Fu &f, TF weight ) const {
     TODO;
@@ -865,6 +868,7 @@ void ConvexPolyhedron3<Pc>::clear( const Box &box, CI cut_id ) {
         update_min_max_coord();
 }
 
+// COMPRESSIBLE CENTROID
 template<class Pc>
 void ConvexPolyhedron3<Pc>::add_centroid_contrib( Pt &ctd, TF &mea, const SpaceFunctions::Constant<TF> &/*sf*/, const FunctionEnum::CompressibleFunc<TF> &/*rf*/, TF weight ) const {
     TODO;
@@ -984,6 +988,7 @@ typename ConvexPolyhedron3<Pc>::Pt ConvexPolyhedron3<Pc>::centroid( const SpaceF
     return mea ? ctd / mea : ctd;
 }
 
+// COMPRESSIBLE HESSIAN VOLUME
 template<class Pc>
 typename ConvexPolyhedron3<Pc>::TF ConvexPolyhedron3<Pc>::integration_der_wrt_weight( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &fu, TF weight ) const {
     TODO;
@@ -1000,10 +1005,32 @@ typename ConvexPolyhedron3<Pc>::TF ConvexPolyhedron3<Pc>::integration_der_wrt_we
     return 0;
 }
 
+// COMPRESSIBLE VOLUME
 template<class Pc>
-typename ConvexPolyhedron3<Pc>::TF ConvexPolyhedron3<Pc>::integration( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &/*rf*/, TF weight ) const {
-    TODO;
-    return 0;
+typename ConvexPolyhedron3<Pc>::TF ConvexPolyhedron3<Pc>::integration( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, TF psi ) const {
+    TF vol = 0;
+    TF tol = 1e-16;
+    auto z = func.seed_inverse(sphere_center);
+    auto w = func.weight_inverse(psi, z);
+
+    // Iterate over each face in the polyhedron.
+    for( const Face &face : faces ) {
+        const auto faceNormal = face.cut_N;
+        for( const Edge &edge : face.edges ) {
+            auto p0 = edge.n0->pos;
+            auto p1 = edge.n1->pos;
+
+            // Compute the edge vector.
+            auto edgeVec = p1 - p0;
+            auto tangent = normalized(edgeVec);
+            auto edgeNormal = normalized(cross_prod(faceNormal, tangent));
+
+            vol += tol * w;
+
+        }
+    }
+
+    return vol;
 }
 
 template<class Pc>

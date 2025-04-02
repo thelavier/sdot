@@ -119,14 +119,15 @@ template<class Pc> template<class Sf>
 typename ConvexPolyhedron2<Pc>::TF ConvexPolyhedron2<Pc>::integration_der_wrt_weight( const Sf &sf, const FunctionEnum::CompressibleFunc<TF> &func, TF psi ) const {
     TF res = 0;
     TF tol = 1e-16;
+    auto z = func.seed_inverse(sphere_center);
+    auto w = func.weight_inverse(psi, z);
+
     // for each segment
     for (size_t i1 = 0, i0 = nb_points() - 1; i1 < nb_points(); i0 = i1++) {
         if (arcs[i0]) {
             throw std::runtime_error("Arc integration not implemented.");
 
         } else {
-            auto z = func.seed_inverse(sphere_center);
-            auto w = func.weight_inverse(psi, z);
             auto p0 = point(i0);
             auto p1 = point(i1);
             
@@ -376,11 +377,12 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
 
 // COMPRESSIBLE HESSIAN BOUNDARY
 template<class Pc> template<class Grid>
-void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &f, TF weight ) const {    
-    
+void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &f, TF psi ) const {    
+    BoundaryItem item;
+    auto zi = func.seed_inverse(sphere_center);
+    auto w = func.weight_inverse(psi, zi);
+
     for( size_t i1 = 0, i0 = nb_points() - 1; i1 < nb_points(); i0 = i1++ ) {
-        BoundaryItem item;
-        auto zi = sphere_center;
         auto p0 = point(i0);
         auto p1 = point(i1);
         item.points[ 0 ] = p0;
@@ -390,9 +392,9 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
         item.id = num_dirac_1;
 
         TI m_num_dirac_1 = num_dirac_1 % nb_diracs, d_num_dirac_1 = num_dirac_1 / nb_diracs;
-        auto zk = grid.sym( positions[ m_num_dirac_1 ], int( d_num_dirac_1 ) - 1 );
+        auto zk = func.seed_inverse(grid.sym( positions[ m_num_dirac_1 ], int( d_num_dirac_1 ) - 1 ));
 
-        item.measure = 0;
+        item.measure = w * dot(zi, zk);
     }
 }
 
@@ -1662,14 +1664,15 @@ void ConvexPolyhedron2<Pc>::add_centroid_contrib( Pt &ctd, TF &mea, const SpaceF
     mea = 0;
     ctd = { 0, 0 };
     TF tol = 1e-16;
+    auto z = func.seed_inverse(sphere_center);
+    auto w = func.weight_inverse(psi, z);
+
     // for each segment
     for (size_t i1 = 0, i0 = nb_points() - 1; i1 < nb_points(); i0 = i1++) {
         if (arcs[i0]) {
             throw std::runtime_error("Arc integration not implemented.");
 
         } else {
-            auto z = func.seed_inverse(sphere_center);
-            auto w = func.weight_inverse(psi, z);
             auto p0 = point(i0);
             auto p1 = point(i1);
             
@@ -1828,6 +1831,9 @@ typename Pc::TF ConvexPolyhedron2<Pc>::internal_energy( const SpaceFunctions::Co
     TF vol = 0;
     TF ie = 0;
     TF tol = 1e-16;
+    auto z = func.seed_inverse(sphere_center);
+    auto w = func.weight_inverse(psi, z);
+
     // for each segment
     for (size_t i1 = 0, i0 = nb_points() - 1; i1 < nb_points(); i0 = i1++) {
         if (arcs[i0]) {
@@ -1835,8 +1841,6 @@ typename Pc::TF ConvexPolyhedron2<Pc>::internal_energy( const SpaceFunctions::Co
             throw std::runtime_error("Arc integration not implemented.");
 
         } else {
-            auto z = func.seed_inverse(sphere_center);
-            auto w = func.weight_inverse(psi, z);
             auto p0 = point(i0);
             auto p1 = point(i1);
             
@@ -1879,6 +1883,9 @@ template<class Pc>
 typename Pc::TF ConvexPolyhedron2<Pc>::integration( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, TF psi ) const {
     TF vol = 0;
     TF tol = 1e-16;
+    auto z = func.seed_inverse(sphere_center);
+    auto w = func.weight_inverse(psi, z);
+
     // for each segment
     for (size_t i1 = 0, i0 = nb_points() - 1; i1 < nb_points(); i0 = i1++) {
         if (arcs[i0]) {
@@ -1886,8 +1893,6 @@ typename Pc::TF ConvexPolyhedron2<Pc>::integration( const SpaceFunctions::Consta
             throw std::runtime_error("Arc integration not implemented.");
 
         } else {
-            auto z = func.seed_inverse(sphere_center);
-            auto w = func.weight_inverse(psi, z);
             auto p0 = point(i0);
             auto p1 = point(i1);
             
@@ -1896,13 +1901,13 @@ typename Pc::TF ConvexPolyhedron2<Pc>::integration( const SpaceFunctions::Consta
             Point2<TF> normal = rot90(edge); // rotates edge by 90 degrees
             normal = normalized(normal);     // get a unit normal
 
-            // std::ostringstream debugStream;
-            // debugStream << "Iteration " << i0 << " -> " << i1 << ":\n";
-            // debugStream << "  z: (" << z[0] << ", " << z[1] << ")\n";
-            // debugStream << "  w: " << w << "\n";
-            // debugStream << "  p0: (" << p0[0] << ", " << p0[1] << ")\n";
-            // debugStream << "  p1: (" << p1[0] << ", " << p1[1] << ")\n";
-            // debugStream << "  normal: (" << normal[0] << ", " << normal[1] << ")\n";
+            std::ostringstream debugStream;
+            debugStream << "Iteration " << i0 << " -> " << i1 << ":\n";
+            debugStream << "  z: (" << z[0] << ", " << z[1] << ")\n";
+            debugStream << "  w: " << w << "\n";
+            debugStream << "  p0: (" << p0[0] << ", " << p0[1] << ")\n";
+            debugStream << "  p1: (" << p1[0] << ", " << p1[1] << ")\n";
+            debugStream << "  normal: (" << normal[0] << ", " << normal[1] << ")\n";
 
             // Evaluate the cost function at the endpoints.
             double cfuncp1 = func(p1, z, w);
@@ -1920,10 +1925,10 @@ typename Pc::TF ConvexPolyhedron2<Pc>::integration( const SpaceFunctions::Consta
                 vol -= (z[1] * normal[1] / (func.f_cor * func.f_cor * func.g)) * norm_2(p1 - p0) * (2 * func.gamma - 1) * func.fsa1(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
             }
 
-            // debugStream << "  Intermediate res: " << res << "\n";
-            // debugStream << "------------------------------------" << std::endl;
+            debugStream << "  Intermediate vol: " << vol << "\n";
+            debugStream << "------------------------------------" << std::endl;
 
-            // std::cout << debugStream.str() << std::flush;
+            std::cout << debugStream.str() << std::flush;
 
         }
     }

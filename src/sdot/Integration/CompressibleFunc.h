@@ -88,18 +88,41 @@ struct CompressibleFunc {
         return (x > 0) ? (1 / (gammap * (gammap + 1) * (gammap + 2))) * std::pow(kappa * gamma, 1 - gammap) * std::pow(x, gammap + 2) : 0.0;
     }
 
-    // Inverse functions (2D version):
-    inline sdot::Point2<TS> seed_inverse(const sdot::Point2<TS>& c) const {
-        TS z2 = - TS(1) / (TS(2) * c[1]);
-        TS z1 = - c[0] / c[1];
-        return sdot::Point2<TS>(z1, z2);
+    // Inverse functions:
+    template<class PT>
+    inline auto seed_inverse(PT c) const {
+        constexpr std::size_t dim = sdot::point_dimension<PT>::value;
+        if constexpr (dim == 2) {
+            TS z1 = - c[0] / c[1];
+            TS z2 = - TS(1) / (TS(2) * c[1]);
+            return sdot::Point2<TS>(z1, z2);
+        } else if constexpr (dim == 3) {
+            TS z1 = - c[0] / c[2];
+            TS z2 = - c[1] / c[2];
+            TS z3 = - TS(1) / (TS(2) * c[2]);
+            return sdot::Point3<TS>(z1, z2, z3);
+        } else {
+            static_assert(dim == 2 || dim == 3, "Only 2D and 3D point types are supported.");
+        }
     }
 
-    inline double weight_inverse(double psi, const sdot::Point2<TS>& z) const {
-        double term1 = (z[0] / (2 * z[1])) * (z[0] / (2 * z[1]));
-        double term2 = (1 / (2 * z[1])) * (1 / (2 * z[1]));
-        double term3 = (f_cor * f_cor / (2 * z[1])) * z[0] * z[0];
-        return psi - (term1 + term2 - term3 + c_p * pi_0);
+    template<class PT>
+    inline double weight_inverse(double psi, PT z) const {
+        constexpr std::size_t dim = sdot::point_dimension<PT>::value;
+        if constexpr (dim == 2) {
+            double term1 = (z[0] / (2 * z[1])) * (z[0] / (2 * z[1]));
+            double term2 = (1 / (2 * z[1])) * (1 / (2 * z[1]));
+            double term3 = (f_cor * f_cor / (2 * z[1])) * z[0] * z[0];
+            return psi - (term1 + term2 - term3 + c_p * pi_0);
+        } else if constexpr (dim == 3) {
+            double term1 = (z[0] / (2 * z[2])) * (z[0] / (2 * z[2]));
+            double term2 = (z[1] / (2 * z[2])) * (z[1] / (2 * z[2]));
+            double term3 = (1 / (2 * z[2])) * (1 / (2 * z[2]));
+            double term4 = (f_cor * f_cor / (2 * z[2])) * (z[0] * z[0] + z[1] * z[1]);
+            return psi - (term1 + term2 + term3 - term4);
+        } else {
+            static_assert(dim == 2 || dim == 3, "Only 2D and 3D point types are supported.");
+        }
     }
 
     inline double ctd_c1_coeff(double s, const sdot::Point2<TS>& z, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, double w) const {

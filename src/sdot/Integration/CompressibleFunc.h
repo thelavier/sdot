@@ -67,7 +67,7 @@ struct CompressibleFunc {
         // Optionally, define a span for visualization.
     }
 
-    // Helper power functions:
+    // F Star Functions
     inline double fsd1(double x) const {
         double gammap = 1 / (1 - 1 / gamma);
         return (x > 0) ? std::pow(kappa * gamma, 1 - gammap) * std::pow(x, gammap - 1) : 0.0;
@@ -88,7 +88,7 @@ struct CompressibleFunc {
         return (x > 0) ? (1 / (gammap * (gammap + 1) * (gammap + 2))) * std::pow(kappa * gamma, 1 - gammap) * std::pow(x, gammap + 2) : 0.0;
     }
 
-    // Inverse functions:
+    // Inverse Transform Functions
     template<class PT>
     inline auto seed_inverse(PT c) const {
         constexpr std::size_t dim = sdot::point_dimension<PT>::value;
@@ -125,6 +125,7 @@ struct CompressibleFunc {
         }
     }
 
+    // Centroid Coefficients
     inline double ctd_c1_coeff(double s, const sdot::Point2<TS>& z, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, double w) const {
 
         // Compute differences between the p1 and p0 coordinates.
@@ -203,6 +204,135 @@ struct CompressibleFunc {
         return term1 + term2 + term3 + term4;
         
     }
+
+    //AppellF1 Hypergeometric Function
+    template <typename T>
+    static T appell_F1(T a, T b1, T b2, T c, T x, T y, T tol = 1e-12, int max_iter = 1000) {
+        T sum = 0;
+        for (int k = 0; k < max_iter; ++k) {
+            T term_k = 0;
+            for (int m = 0; m <= k; ++m) {
+                int n = k - m;
+                T term = ( std::tgamma(a + m + n) / std::tgamma(a) )
+                         / ( std::tgamma(c + m + n) / std::tgamma(c) );
+                term *= ( std::tgamma(b1 + m) / std::tgamma(b1) ) / std::tgamma(m + 1);
+                term *= ( std::tgamma(b2 + n) / std::tgamma(b2) ) / std::tgamma(n + 1);
+                term *= std::pow(x, m) * std::pow(y, n);
+                term_k += term;
+            }
+            sum += term_k;
+            if (k > 0 && std::abs(term_k) < tol * std::abs(sum)) {
+                break;
+            }
+        }
+        return sum;
+    }
+
+    // 2F1 Hypergeometric Function
+    template <typename T>
+    static T hypergeometric_2F1(T a, T b, T c, T z, T tol = 1e-12, int max_iter = 1000) {
+        T sum = 1;  // n = 0 term is 1
+        T term = 1;
+        for (int n = 1; n < max_iter; ++n) {
+            term *= ((a + n - 1) * (b + n - 1)) / ((c + n - 1) * static_cast<T>(n)) * z;
+            sum += term;
+            if (std::abs(term) < tol * std::abs(sum))
+                break;
+        }
+        return sum;
+    }
+
+    // Hessian Boundary Coefficients
+    inline double hess_bdry_A1 (const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) {
+        double dp = p1[0] - p0[0];
+        double dz = zi[1] - zk[1];
+        return (dp * dp * dz * dz) / ((zi[1] * zi[1]) * (zk[1] * zk[1]));
+
+    }
+
+    inline double hess_bdry_A2 (const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) {
+        double dp = p1[0] - p0[0];
+        double dz = zi[1] - zk[1];
+        double term = p0[0] * dz + (f_cor * f_cor) * (zi[0] * zk[1] - zi[1] * zk[0]);
+        return (2.0 * dp * dz * term) / ((zi[1] * zi[1]) * (zk[1] * zk[1]));
+        
+    }
+
+    inline double hess_bdry_A3 (const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) {
+        double dz = zi[1] - zk[1];
+        double term = p0[0] * dz + (f_cor * f_cor) * (zi[0] * zk[1] - zi[1] * zk[0]);
+        return ((g * g * dz * dz) + (term * term)) / ((zi[1] * zi[1]) * (zk[1] * zk[1]));
+        
+    }
+
+    inline double hess_bdry_K_plus(double s, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk, double w) const {
+        double A1 = hess_bdry_A1(p0, p1, zi, zk);
+        double A2 = hess_bdry_A2(p0, p1, zi, zk);
+        double A3 = hess_bdry_A3(p0, p1, zi, zk);
+        double cfuncp0 = this->operator()(p0, zi, w);
+        double D = std::sqrt(A2*A2 - 4 * A1 * A3);
+        double commonB = (p1[1] - p0[1]) + zi[0]*(p0[0] - p1[0]);
+        double num = (D + 2*A1*s + A2) * commonB;
+        double den = (D + A2) * commonB + 2*A1 * zi[1] * (w - cfuncp0);
+        return std::sqrt(num / den);
+    }
+
+    inline double hess_bdry_K_minus(double s, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk, double w) const {
+        double A1 = hess_bdry_A1(p0, p1, zi, zk);
+        double A2 = hess_bdry_A2(p0, p1, zi, zk);
+        double A3 = hess_bdry_A3(p0, p1, zi, zk);
+        double cfuncp0 = this->operator()(p0, zi, w);
+        double D = std::sqrt(A2*A2 - 4 * A1 * A3);
+        double commonB = (p1[1] - p0[1]) + zi[0]*(p0[0] - p1[0]);
+        double num = (D - 2*A1*s - A2) * commonB;
+        double den = (D - A2) * commonB - 2*A1 * zi[1] * (w - cfuncp0);
+        return std::sqrt(num / den);
+    }
+
+    inline double hess_bdry_C_plus(double s, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk, double w) const {
+        double A1 = hess_bdry_A1(p0, p1, zi, zk);
+        double A2 = hess_bdry_A2(p0, p1, zi, zk);
+        double A3 = hess_bdry_A3(p0, p1, zi, zk);
+        double D = std::sqrt(A2 * A2 - 4 * A1 * A3);
+        double commonB = (p1[1] - p0[1]) + zi[0] * (p0[0] - p1[0]);
+    
+        // Compute the interpolated point p(s)
+        sdot::Point2<TS> p_s = p0;
+        p_s[0] = p0[0] + s * (p1[0] - p0[0]);
+        p_s[1] = p0[1] + s * (p1[1] - p0[1]);
+    
+        // Evaluate the cost function at s and at s = 0.
+        double cfuncps = this->operator()(p_s, zi, w); // c(Φ(γ(s)), zᵢ)
+        double cfuncp0 = this->operator()(p0, zi, w);    // c(Φ(γ(0)), zᵢ)
+    
+        double num = -2.0 * A1 * zi[1] * (w - cfuncps);
+        double den = ((+D - A2) * commonB) - 2.0 * A1 * zi[1] * (w - cfuncp0);
+    
+        return num / den;
+    }
+    
+    
+    inline double hess_bdry_C_minus(double s, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk, double w) const {
+        double A1 = hess_bdry_A1(p0, p1, zi, zk);
+        double A2 = hess_bdry_A2(p0, p1, zi, zk);
+        double A3 = hess_bdry_A3(p0, p1, zi, zk);
+        double D = std::sqrt(A2 * A2 - 4 * A1 * A3);
+        double commonB = (p1[1] - p0[1]) + zi[0] * (p0[0] - p1[0]);
+    
+        // Compute the interpolated point p(s)
+        sdot::Point2<TS> p_s = p0;
+        p_s[0] = p0[0] + s * (p1[0] - p0[0]);
+        p_s[1] = p0[1] + s * (p1[1] - p0[1]);
+    
+        // Evaluate the cost function at s and at s = 0.
+        double cfuncps = this->operator()(p_s, zi, w); // c(Φ(γ(s)), zᵢ)
+        double cfuncp0 = this->operator()(p0, zi, w);    // c(Φ(γ(0)), zᵢ)
+    
+        double num = -2.0 * A1 * zi[1] * (w - cfuncps);
+        double den = ((-D - A2) * commonB) - 2.0 * A1 * zi[1] * (w - cfuncp0);
+    
+        return num / den;
+    }    
 
     // Parameters for the cost function and the fstar functions:
     TS kappa, gamma, g, f_cor, pi_0, c_p;

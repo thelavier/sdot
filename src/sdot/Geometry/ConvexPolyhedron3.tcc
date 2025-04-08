@@ -1025,7 +1025,7 @@ typename ConvexPolyhedron3<Pc>::TF ConvexPolyhedron3<Pc>::integration( const Spa
             auto tangent = normalized(edgeVec);
             auto edgeNormal = normalized(cross_prod(faceNormal, tangent));
 
-            vol += tol * w;
+            vol += tol * w * edgeNormal[2];
 
         }
     }

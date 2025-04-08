@@ -135,6 +135,22 @@ public:
     TF                             measure                   () const;
 
     TF                             internal_energy           ( const SpaceFunctions::Constant<TF>     &sf, const FunctionEnum::CompressibleFunc<TF> &f, TF weight = 0 ) const;
+    TF                             internal_energy           ( const SpaceFunctions::Constant<TF>     &sf, const FunctionEnum::ExpWmR2db<TF>        &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Constant<TF>     &sf, const FunctionEnum::WmR2                 &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Constant<TF>     &sf, const FunctionEnum::Unit                 &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Constant<TF>     &sf, const FunctionEnum::Arfd                 &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Constant<TF>     &sf, const FunctionEnum::Arf                  &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Constant<TF>     &sf, const FunctionEnum::R2                   &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Constant<TF>     &sf, const FunctionEnum::R4                   &f, TF weight = 0 ) const { TODO; return 0; }
+
+    TF                             internal_energy           ( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::CompressibleFunc<TF> &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::ExpWmR2db<TF>        &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::WmR2                 &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::Unit                 &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::Arfd                 &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::Arf                  &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::R2                   &f, TF weight = 0 ) const { TODO; return 0; }
+    TF                             internal_energy           ( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::R4                   &f, TF weight = 0 ) const { TODO; return 0; }
 
     TF                             integration               ( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::CompressibleFunc<TF> &f, TF weight = 0 ) const { TODO; return 0; }
     TF                             integration               ( const SpaceFunctions::Polynomial<TF,6> &sf, const FunctionEnum::ExpWmR2db<TF>        &f, TF weight = 0 ) const { TODO; return 0; }

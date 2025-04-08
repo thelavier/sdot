@@ -157,34 +157,39 @@ struct CompressibleFunc {
     }
 
     inline double ctd_c2_coeff_1(double s, const sdot::Point2<TS>& z, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, double w) const {
-        // Compute the differences between p1 and p0 coordinates.
-        double dp1 = p1[0] - p0[0]; // p^{j+1}_1 - p^j_1
-        double dp2 = p1[1] - p0[1]; // p^{j+1}_2 - p^j_2
+        // Precomputed constants
+        double f2    = f_cor * f_cor;      // f^2
 
-        
-        double term1 = 2.0 * s * (dp2 * dp2);
-        double term2 = -4.0 * p0[1] * z[0] * dp1;
-        double term3 = dp2 * (
-              - (f_cor * f_cor) * (z[0] * z[0])
-              + 2.0 * z[1] * (c_p * pi_0 + w)
-              + 2.0 * p0[1]
-              + 2.0 * z[0] * p0[0] * (1.0 + s)
-              - 2.0 * s * z[0] * p1[0]
-        );
-        double term4 = gamma * (
-              -4.0 * s * (dp2 * dp2)
-              + 6.0 * p0[1] * z[0] * dp1
-              + dp2 * (
-                    (f_cor * f_cor) * (z[0] * z[0])
-                    - 2.0 * z[1] * (c_p * pi_0 + w)
-                    - 4.0 * p0[1]
-                    - 2.0 * z[0] * p0[0] * (1.0 + 2.0 * s)
-                    + 4.0 * s * z[0] * p1[0]
-              )
-        );
+        // Non-gamma terms:
+        double term1 = -2.0 * p0[1] * p1[1]
+            - 2.0 * (p0[1] * p0[1]) * (-1.0 + s)
+            + 4.0 * p0[1] * p1[1] * s
+            - 2.0 * (p1[1] * p1[1]) * s
+            + 4.0 * p0[1] * p1[0] * z[0]
+            - 2.0 * p0[0] * p1[1] * z[0]
+            + 2.0 * p0[0] * p0[1] * (-1.0 + s) * z[0]
+            - 2.0 * p0[1] * p1[0] * s * z[0]
+            - 2.0 * (p0[0] - p1[0]) * p1[1] * s * z[0]
+            - f2 * p0[1] * z[0] * z[0]
+            + f2 * p1[1] * z[0] * z[0]
+            + 2.0 * p0[1] * (c_p * pi_0 + w) * z[1]
+            - 2.0 * p1[1] * (c_p * pi_0 + w) * z[1];
 
-        // Sum all terms
-        return term1 + term2 + term3 + term4;
+        // Gamma-multiplied terms:
+        double term2 = p0[1] * p1[1] * (4.0 - 8.0 * s)
+            + 4.0 * (p0[1] * p0[1]) * (-1.0 + s)
+            + 4.0 * (p1[1] * p1[1]) * s
+            + 2.0 * p0[0] * p1[1] * z[0]
+            - 4.0 * p0[0] * p0[1] * (-1.0 + s) * z[0]
+            + 4.0 * (p0[0] - p1[0]) * p1[1] * s * z[0]
+            + p0[1] * p1[0] * (-6.0 + 4.0 * s) * z[0]
+            + f2 * p0[1] * z[0] * z[0]
+            - f2 * p1[1] * z[0] * z[0]
+            - 2.0 * p0[1] * (c_p * pi_0 + w) * z[1]
+            + 2.0 * p1[1] * (c_p * pi_0 + w) * z[1];
+
+        // Sum both parts and return the result
+        return term1 + gamma * term2;
     }
 
     inline double ctd_c2_coeff_2(double s, const sdot::Point2<TS>& z, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, double w) const {
@@ -198,16 +203,18 @@ struct CompressibleFunc {
          // Compute the terms of the formula:
         double term1 = 4.0 * A * A * A;
         double term2 = (4.0 * z[1] * gamma * A * A * X) / ((3.0 * gamma - 2.0) * B);
-        double term3 = (4.0 * z[1] * gamma * (gamma - 1.0) * A * X * X) / ((6.0 * gamma * gamma - 7.0 * gamma + 2.0) * (B * B));
-        double term4 = (2.0 * z[1] * (gamma - 1.0) * (gamma - 1.0) * X * X * X) / ((6.0 * gamma * gamma - 7.0 * gamma + 2.0) * (B * B * B));
+        double term3 = (8.0 * z[1] * z[1] * gamma * (gamma - 1.0) * A * X * X) / ((6.0 * gamma * gamma - 7.0 * gamma + 2.0) * (B * B));
+        double term4 = (8.0 * z[1] * z[1] * z[1] * (gamma - 1.0) * (gamma - 1.0) * X * X * X) / ((6.0 * gamma * gamma - 7.0 * gamma + 2.0) * (B * B * B));
 
-        return term1 + term2 + term3 + term4;
+        return term1 + term2 - term3 + term4;
         
     }
 
     //AppellF1 Hypergeometric Function
     template <typename T>
-    static T appell_F1(T a, T b1, T b2, T c, T x, T y, T tol = 1e-12, int max_iter = 1000) {
+    static T appell_F1(T a, T b1, T b2, T c, T x, T y) {
+        const T tol = static_cast<T>(1e-12);
+        const int max_iter = 1000;
         T sum = 0;
         for (int k = 0; k < max_iter; ++k) {
             T term_k = 0;
@@ -230,7 +237,9 @@ struct CompressibleFunc {
 
     // 2F1 Hypergeometric Function
     template <typename T>
-    static T hypergeometric_2F1(T a, T b, T c, T z, T tol = 1e-12, int max_iter = 1000) {
+    static T hypergeometric_2F1(T a, T b, T c, T z) {
+        const T tol = static_cast<T>(1e-12);
+        const int max_iter = 1000;
         T sum = 1;  // n = 0 term is 1
         T term = 1;
         for (int n = 1; n < max_iter; ++n) {
@@ -243,14 +252,14 @@ struct CompressibleFunc {
     }
 
     // Hessian Boundary Coefficients
-    inline double hess_bdry_A1 (const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) {
+    inline double hess_bdry_A1 (const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) const {
         double dp = p1[0] - p0[0];
         double dz = zi[1] - zk[1];
         return (dp * dp * dz * dz) / ((zi[1] * zi[1]) * (zk[1] * zk[1]));
 
     }
 
-    inline double hess_bdry_A2 (const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) {
+    inline double hess_bdry_A2 (const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) const {
         double dp = p1[0] - p0[0];
         double dz = zi[1] - zk[1];
         double term = p0[0] * dz + (f_cor * f_cor) * (zi[0] * zk[1] - zi[1] * zk[0]);
@@ -258,7 +267,7 @@ struct CompressibleFunc {
         
     }
 
-    inline double hess_bdry_A3 (const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) {
+    inline double hess_bdry_A3 (const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) const {
         double dz = zi[1] - zk[1];
         double term = p0[0] * dz + (f_cor * f_cor) * (zi[0] * zk[1] - zi[1] * zk[0]);
         return ((g * g * dz * dz) + (term * term)) / ((zi[1] * zi[1]) * (zk[1] * zk[1]));

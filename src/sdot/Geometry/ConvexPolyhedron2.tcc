@@ -4,6 +4,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <boost/math/quadrature/gauss.hpp>
 
 #ifdef PD_WANT_STAT
 #include "../Support/Stat.h"
@@ -149,8 +150,11 @@ typename ConvexPolyhedron2<Pc>::TF ConvexPolyhedron2<Pc>::integration_der_wrt_we
 
             } else {
                 // Use the Limit expression
-                res -= (z[1] * normal[1] / (func.f_cor * func.f_cor * func.g)) * norm_2(p1 - p0) * func.gamma * func.fs(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
-
+                if (w > cfuncp0) {
+                    res -= (z[1] * normal[1] / (func.f_cor * func.f_cor * func.g)) * norm_2(p1 - p0) * func.gamma * func.fs(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
+                } else {
+                    res += 0;
+                }
             }
         }
     }
@@ -406,18 +410,24 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
         TF prefactor = 2 * norm_2(zi - zk) * zi[1] * norm_2(p1 - p0) / (func.f_cor * func.f_cor * func.g);
         TF coeff1 = func.hess_bdry_K_plus(1.0, p0, p1, zi, zk, w) * func.hess_bdry_K_minus(1.0, p0, p1, zi, zk, w);
         TF coeff0 = func.hess_bdry_K_plus(0.0, p0, p1, zi, zk, w) * func.hess_bdry_K_minus(0.0, p0, p1, zi, zk, w);
-        TF h1 = func.appell_F1(func.gamma / (func.gamma - 1.0), 0.5, 0.5, 2.0 + 1.0 / (func.gamma - 1.0), func.hess_bdry_C_minus(1.0, p0, p1, zi, zk, w), func.hess_bdry_C_plus(1.0, p0, p1, zi, zk, w));
-        TF h2 = func.appell_F1(func.gamma / (func.gamma - 1.0), 0.5, 0.5, 2.0 + 1.0 / (func.gamma - 1.0), func.hess_bdry_C_minus(0.0, p0, p1, zi, zk, w), func.hess_bdry_C_plus(0.0, p0, p1, zi, zk, w));
+        TF ah1 = func.appell_F1(func.gamma / (func.gamma - 1.0), 0.5, 0.5, 2.0 + 1.0 / (func.gamma - 1.0), func.hess_bdry_C_minus(1.0, p0, p1, zi, zk, w), func.hess_bdry_C_plus(1.0, p0, p1, zi, zk, w));
+        TF ah0 = func.appell_F1(func.gamma / (func.gamma - 1.0), 0.5, 0.5, 2.0 + 1.0 / (func.gamma - 1.0), func.hess_bdry_C_minus(0.0, p0, p1, zi, zk, w), func.hess_bdry_C_plus(0.0, p0, p1, zi, zk, w));
         TF g1 = std::sqrt(func.hess_bdry_A1(p0, p1, zi, zk) + func.hess_bdry_A2(p0, p1, zi, zk) + func.hess_bdry_A3(p0, p1, zi, zk));
         TF g0 = std::sqrt(func.hess_bdry_A3(p0, p1, zi, zk));
 
         if ( std::fabs(denom) > tol ) {
-            item.measure -= prefactor * func.fs(w - cfuncp1) * coeff1 * h1 / (g1 * denom);
-            item.measure += prefactor * func.fs(w - cfuncp0) * coeff0 * h2 / (g0 * denom);
+            item.measure -= prefactor * func.fs(w - cfuncp1) * coeff1 * ah1 / (g1 * denom);
+            item.measure += prefactor * func.fs(w - cfuncp0) * coeff0 * ah0 / (g0 * denom);
 
         } else {
-            // Use the Limit expression
-            item.measure -= prefactor * func.hypergeometric_2F1(0.5, func.gamma / (func.gamma - 1), 1.5 + 1 / (func.gamma - 1), 1) * func.hypergeometric_2F1(0.5, func.gamma / (func.gamma - 1), 2 + 1 / (func.gamma - 1), 1) * ;
+            // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
+            constexpr int quadrature_points = 16;
+            // Bind all additional parameters into a lambda that takes only the integration variable t.
+            auto integrand = [&](TF t) -> TF {
+                return func.hess_bdry_integrand(t, p0, p1, zi, zk, w);
+            };
+            TF integral_value = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand, 0, 1);
+            item.measure += prefactor / zi[1] * integral_value ;
 
         }
     }
@@ -1735,10 +1745,17 @@ void ConvexPolyhedron2<Pc>::add_centroid_contrib( Pt &ctd, TF &mea, const SpaceF
 
             } else if ( (std::fabs(denom1) < tol) && (std::fabs(denom2) > tol) ) {
                 // Use the Limit expressions
+                if ( w > cfuncp0 ) {
+                    ctd[0] -= prefactorctd1 / z[1] * (2 * func.gamma - 1) * (p0[0] + p1[0]) * func.fsa1(w - cfuncp0) / (2 * (func.gamma - 1) * (w - cfuncp0));
+                } else {
+                    ctd[0] += 0;
+                }
 
-                ctd[0] -= prefactorctd1 / z[1] * (2 * func.gamma - 1) * (p0[0] + p1[0]) * func.fsa1(w - cfuncp0) / (2 * (func.gamma - 1) * (w - cfuncp0));
-
-                ctd[1] += prefactorctd21 / z[1] * (2 * func.gamma - 1) * (z[0] * (p0[0] - p1[0]) + 2 * p1[1]) * func.fsa1(w - cfuncp1) / (2 * (func.gamma - 1) * (w - cfuncp1));
+                if ( w > cfuncp1 ) {
+                    ctd[1] += prefactorctd21 / z[1] * (2 * func.gamma - 1) * (z[0] * (p0[0] - p1[0]) + 2 * p1[1]) * func.fsa1(w - cfuncp1) / (2 * (func.gamma - 1) * (w - cfuncp1));
+                } else {
+                    ctd[1] += 0;
+                }
 
                 ctd[1] += prefactorctd22 / (func.gamma - 1) * func.fs(w - cfuncp0) * (p0[0] * p0[0] + p1[0] * p1[0] + p0[0] * p1[0]) / 3;
 
@@ -1908,17 +1925,21 @@ typename Pc::TF ConvexPolyhedron2<Pc>::internal_energy( const SpaceFunctions::Co
             TF denom = (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
 
             if ( std::fabs(denom) > tol ) {
-                ie += (z[1] * z[1] * normal[1] * (func.gamma - 1) * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp1) * (w - cfuncp1) * std::pow(func.fsd1(w - cfuncp1), func.gamma) / ((3 * func.gamma - 2) * (p1[1] - p0[1] + z[0] * (p0[0] - p1[0])));
-                ie -= (z[1] * z[1] * normal[1] * (func.gamma - 1) * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp0) * (w - cfuncp0) * std::pow(func.fsd1(w - cfuncp0), func.gamma) / ((3 * func.gamma - 2) * (p1[1] - p0[1] + z[0] * (p0[0] - p1[0])));
+                ie += (z[1] * z[1] * normal[1] * (func.gamma - 1) * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp1) * (w - cfuncp1) * std::pow(func.fsd1(w - cfuncp1), func.gamma) / ((3 * func.gamma - 2) * denom);
+                ie -= (z[1] * z[1] * normal[1] * (func.gamma - 1) * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp0) * (w - cfuncp0) * std::pow(func.fsd1(w - cfuncp0), func.gamma) / ((3 * func.gamma - 2) * denom);
 
-                vol += (z[1] * z[1] * normal[1] * func.fsa1(w - cfuncp1)) / (func.f_cor * func.f_cor * func.g) * norm_2(p1 - p0) / (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
-                vol -= (z[1] * z[1] * normal[1] * func.fsa1(w - cfuncp0)) / (func.f_cor * func.f_cor * func.g) * norm_2(p1 - p0) / (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
+                vol += (z[1] * z[1] * normal[1] * func.fsa1(w - cfuncp1)) / (func.f_cor * func.f_cor * func.g) * norm_2(p1 - p0) / denom;
+                vol -= (z[1] * z[1] * normal[1] * func.fsa1(w - cfuncp0)) / (func.f_cor * func.f_cor * func.g) * norm_2(p1 - p0) / denom;
 
             } else {
                 // Use the Limit expression
                 ie -= (z[1] * normal[1] * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp0) * std::pow(func.fsd1(w - cfuncp0), func.gamma);
 
-                vol -= (z[1] * normal[1] / (func.f_cor * func.f_cor * func.g)) * norm_2(p1 - p0) * (2 * func.gamma - 1) * func.fsa1(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
+                if ( w > cfuncp0 ) {
+                    vol -= (z[1] * normal[1] / (func.f_cor * func.f_cor * func.g)) * norm_2(p1 - p0) * (2 * func.gamma - 1) * func.fsa1(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
+                } else {
+                    vol += 0;
+                }
             }
         }
     }
@@ -1973,7 +1994,11 @@ typename Pc::TF ConvexPolyhedron2<Pc>::integration( const SpaceFunctions::Consta
 
             } else {
                 // Use the Limit expression
-                vol -= (z[1] * normal[1] / (func.f_cor * func.f_cor * func.g)) * norm_2(p1 - p0) * (2 * func.gamma - 1) * func.fsa1(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
+                if ( w > cfuncp0 ) {
+                    vol -= (z[1] * normal[1] / (func.f_cor * func.f_cor * func.g)) * norm_2(p1 - p0) * (2 * func.gamma - 1) * func.fsa1(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
+                } else {
+                    vol += 0;
+                }
             }
 
             // debugStream << "  Intermediate vol: " << vol << "\n";

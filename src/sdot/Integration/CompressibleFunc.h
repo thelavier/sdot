@@ -235,20 +235,19 @@ struct CompressibleFunc {
         return sum;
     }
 
-    // 2F1 Hypergeometric Function
-    template <typename T>
-    static T hypergeometric_2F1(T a, T b, T c, T z) {
-        const T tol = static_cast<T>(1e-12);
-        const int max_iter = 1000;
-        T sum = 1;  // n = 0 term is 1
-        T term = 1;
-        for (int n = 1; n < max_iter; ++n) {
-            term *= ((a + n - 1) * (b + n - 1)) / ((c + n - 1) * static_cast<T>(n)) * z;
-            sum += term;
-            if (std::abs(term) < tol * std::abs(sum))
-                break;
-        }
-        return sum;
+    // Hessian Boundary Integrand
+    inline TS hess_bdry_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk, TS w) const
+    {
+        // Compute the point on the edge for parameter t.
+        sdot::Point2<TS> pt = t * p1 + (t - 1) * p0;
+
+        // Evaluate the cost function at pt.
+        TS cfunc_pt = (*this)(pt, zi, w);
+
+        // Evaluate the norm of the gradient of the cost function at pt. 
+        TS grad_norm = std::sqrt(hess_bdry_A1(p0, p1, zi, zk) * t * t + hess_bdry_A2(p0, p1, zi, zk) * t + hess_bdry_A3(p0, p1, zi, zk));
+
+        return fsd1(w - cfunc_pt) / grad_norm;
     }
 
     // Hessian Boundary Coefficients

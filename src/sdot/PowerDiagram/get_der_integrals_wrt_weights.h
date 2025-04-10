@@ -53,8 +53,9 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
             TF coeff = 0.5;
             v_values[ num_dirac_0 ] += cp.integration( space_func, radial_func.func_for_final_cp_integration(), d0_weight );
             cp.for_each_boundary_measure( space_func, radial_func.func_for_final_cp_integration(), grid, nb_diracs, positions, [&]( TF boundary_measure, TI num_dirac_1 ) {
-                if ( num_dirac_1 == TI( -1 ) )
+                if ( num_dirac_1 == TI( -1 ) ) {
                     return;
+                }
                 if ( num_dirac_0 == num_dirac_1 ) {
                     der_0 += coeff * boundary_measure / sqrt( d0_weight );
                 } else {

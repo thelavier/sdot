@@ -239,7 +239,7 @@ struct CompressibleFunc {
     inline TS hess_bdry_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk, TS w) const
     {
         // Compute the point on the edge for parameter t.
-        sdot::Point2<TS> pt = t * p1 + (t - 1) * p0;
+        sdot::Point2<TS> pt = t * p1 + (1 - t) * p0;
 
         // Evaluate the cost function at pt.
         TS cfunc_pt = (*this)(pt, zi, w);
@@ -314,7 +314,7 @@ struct CompressibleFunc {
         double cfuncp0 = this->operator()(p0, zi, w);    // c(Φ(γ(0)), zᵢ)
     
         double num = -2.0 * A1 * zi[1] * (w - cfuncps);
-        double den = ((+D - A2) * commonB) - 2.0 * A1 * zi[1] * (w - cfuncp0);
+        double den = ((D - A2) * commonB) - 2.0 * A1 * zi[1] * (w - cfuncp0);
     
         return num / den;
     }

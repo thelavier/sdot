@@ -58,6 +58,10 @@ struct CompressibleFunc {
         return *this;
     }
 
+    inline bool IntegralType() const {
+        return Int; // True for line integrals, False for vertex evaluations
+    }
+
     N<0> need_ball_cut() const {
         return N<0>();
     }
@@ -210,31 +214,82 @@ struct CompressibleFunc {
         
     }
 
-    //AppellF1 Hypergeometric Function
-    template <typename T>
-    static T appell_F1(T a, T b1, T b2, T c, T x, T y) {
-        const T tol = static_cast<T>(1e-12);
-        const int max_iter = 1000;
-        T sum = 0;
-        for (int k = 0; k < max_iter; ++k) {
-            T term_k = 0;
-            for (int m = 0; m <= k; ++m) {
-                int n = k - m;
-                T term = ( std::tgamma(a + m + n) / std::tgamma(a) )
-                         / ( std::tgamma(c + m + n) / std::tgamma(c) );
-                term *= ( std::tgamma(b1 + m) / std::tgamma(b1) ) / std::tgamma(m + 1);
-                term *= ( std::tgamma(b2 + n) / std::tgamma(b2) ) / std::tgamma(n + 1);
-                term *= std::pow(x, m) * std::pow(y, n);
-                term_k += term;
-            }
-            sum += term_k;
-            if (k > 0 && std::abs(term_k) < tol * std::abs(sum)) {
-                break;
-            }
-        }
-        return sum;
-    }
+    inline double hess_bdry_coeff (const sdot::Point2<TS>& p, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) const {
+        double dz = zi[1] - zk[1];
+        double x1 = p[0];
+        double cross = -zi[1] * zk[0] + zi[0] * zk[1];
+        double term = x1 * dz + f_cor * f_cor * cross;
+        double denom = zi[1] * zi[1] * zk[1] * zk[1];
+        return std::sqrt((g * g * dz * dz + term * term) / denom);
+    }   
 
+    // Integrands
+    // Volume Integrand
+    inline TS volume_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, TS w) const
+    {
+        // Compute the point on the edge for parameter t.
+        sdot::Point2<TS> pt = t * p1 + (1 - t) * p0;
+
+        // Evaluate the cost function at pt.
+        TS cfunc_pt = (*this)(pt, zi, w);
+
+        return fs(w - cfunc_pt);
+    }
+    // Internal Energy Inegrand
+    inline TS ie_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, TS w) const
+    {
+        // Compute the point on the edge for parameter t.
+        sdot::Point2<TS> pt = t * p1 + (1 - t) * p0;
+
+        // Evaluate the cost function at pt.
+        TS cfunc_pt = (*this)(pt, zi, w);
+
+        return (w - cfunc_pt) * std::pow(fsd1(w - cfunc_pt), gamma);
+    }
+    // Centroid Component 1
+    inline TS ctd_0_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, TS w) const
+    {
+        // Compute the point on the edge for parameter t.
+        sdot::Point2<TS> pt = t * p1 + (1 - t) * p0;
+
+        // Evaluate the cost function at pt.
+        TS cfunc_pt = (*this)(pt, zi, w);
+
+        return pt[0] * fs(w - cfunc_pt);
+    }
+    // Centroid Component 2 Part 1
+    inline TS ctd_1_1_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, TS w) const
+    {
+        // Compute the point on the edge for parameter t.
+        sdot::Point2<TS> pt = t * p1 + (1 - t) * p0;
+
+        // Evaluate the cost function at pt.
+        TS cfunc_pt = (*this)(pt, zi, w);
+
+        return pt[1] * fs(w - cfunc_pt);
+    }
+    // Centroid Component 2 Part 2
+    inline TS ctd_1_2_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, TS w) const
+    {
+        // Compute the point on the edge for parameter t.
+        sdot::Point2<TS> pt = t * p1 + (1 - t) * p0;
+
+        // Evaluate the cost function at pt.
+        TS cfunc_pt = (*this)(pt, zi, w);
+
+        return pt[0] * pt[0] * fs(w - cfunc_pt);
+    }
+    // Hessian Volume Integrand
+    inline TS hess_volume_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, TS w) const
+    {
+        // Compute the point on the edge for parameter t.
+        sdot::Point2<TS> pt = t * p1 + (1 - t) * p0;
+
+        // Evaluate the cost function at pt.
+        TS cfunc_pt = (*this)(pt, zi, w);
+
+        return fsd1(w - cfunc_pt);
+    }
     // Hessian Boundary Integrand
     inline TS hess_bdry_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk, TS w) const
     {
@@ -243,107 +298,32 @@ struct CompressibleFunc {
 
         // Evaluate the cost function at pt.
         TS cfunc_pt = (*this)(pt, zi, w);
+        double t_value = w - cfunc_pt;
+        double f_star_prime_value = fsd1(t_value);
 
         // Evaluate the norm of the gradient of the cost function at pt. 
-        TS grad_norm = std::sqrt(hess_bdry_A1(p0, p1, zi, zk) * t * t + hess_bdry_A2(p0, p1, zi, zk) * t + hess_bdry_A3(p0, p1, zi, zk));
+        TS grad_norm = hess_bdry_coeff(pt, zi, zk);
 
-        return fsd1(w - cfunc_pt) / grad_norm;
+        // build dp = p1 - p0
+        TS dxdt = p1[0] - p0[0];
+        TS dydt = p1[1] - p0[1];
+
+        // Jacobian D Phi at pt:  [[1/f^2, 0], [–pt.x/f^2, 1/g]]
+        TS inv_f2 = TS(1) / (f_cor * f_cor);
+        TS inv_g  = TS(1) / g;
+
+        // push‐forward tangent v = DPhi·dp
+        TS v1 = inv_f2 * dxdt;
+        TS v2 = -pt[0] * inv_f2 * dxdt + inv_g * dydt;
+
+        // arclength element
+        TS ds = std::hypot(v1, v2);
+
+        return (f_star_prime_value / grad_norm) * ds;
     }
 
-    // Hessian Boundary Coefficients
-    inline double hess_bdry_A1 (const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) const {
-        double dp = p1[0] - p0[0];
-        double dz = zi[1] - zk[1];
-        return (dp * dp * dz * dz) / ((zi[1] * zi[1]) * (zk[1] * zk[1]));
-
-    }
-
-    inline double hess_bdry_A2 (const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) const {
-        double dp = p1[0] - p0[0];
-        double dz = zi[1] - zk[1];
-        double term = p0[0] * dz + (f_cor * f_cor) * (zi[0] * zk[1] - zi[1] * zk[0]);
-        return (2.0 * dp * dz * term) / ((zi[1] * zi[1]) * (zk[1] * zk[1]));
-        
-    }
-
-    inline double hess_bdry_A3 (const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk) const {
-        double dz = zi[1] - zk[1];
-        double term = p0[0] * dz + (f_cor * f_cor) * (zi[0] * zk[1] - zi[1] * zk[0]);
-        return ((g * g * dz * dz) + (term * term)) / ((zi[1] * zi[1]) * (zk[1] * zk[1]));
-        
-    }
-
-    inline double hess_bdry_K_plus(double s, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk, double w) const {
-        double A1 = hess_bdry_A1(p0, p1, zi, zk);
-        double A2 = hess_bdry_A2(p0, p1, zi, zk);
-        double A3 = hess_bdry_A3(p0, p1, zi, zk);
-        double cfuncp0 = this->operator()(p0, zi, w);
-        double D = std::sqrt(A2*A2 - 4 * A1 * A3);
-        double commonB = (p1[1] - p0[1]) + zi[0]*(p0[0] - p1[0]);
-        double num = (D + 2*A1*s + A2) * commonB;
-        double den = (D + A2) * commonB + 2*A1 * zi[1] * (w - cfuncp0);
-        return std::sqrt(num / den);
-    }
-
-    inline double hess_bdry_K_minus(double s, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk, double w) const {
-        double A1 = hess_bdry_A1(p0, p1, zi, zk);
-        double A2 = hess_bdry_A2(p0, p1, zi, zk);
-        double A3 = hess_bdry_A3(p0, p1, zi, zk);
-        double cfuncp0 = this->operator()(p0, zi, w);
-        double D = std::sqrt(A2*A2 - 4 * A1 * A3);
-        double commonB = (p1[1] - p0[1]) + zi[0]*(p0[0] - p1[0]);
-        double num = (D - 2*A1*s - A2) * commonB;
-        double den = (D - A2) * commonB - 2*A1 * zi[1] * (w - cfuncp0);
-        return std::sqrt(num / den);
-    }
-
-    inline double hess_bdry_C_plus(double s, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk, double w) const {
-        double A1 = hess_bdry_A1(p0, p1, zi, zk);
-        double A2 = hess_bdry_A2(p0, p1, zi, zk);
-        double A3 = hess_bdry_A3(p0, p1, zi, zk);
-        double D = std::sqrt(A2 * A2 - 4 * A1 * A3);
-        double commonB = (p1[1] - p0[1]) + zi[0] * (p0[0] - p1[0]);
-    
-        // Compute the interpolated point p(s)
-        sdot::Point2<TS> p_s = p0;
-        p_s[0] = p0[0] + s * (p1[0] - p0[0]);
-        p_s[1] = p0[1] + s * (p1[1] - p0[1]);
-    
-        // Evaluate the cost function at s and at s = 0.
-        double cfuncps = this->operator()(p_s, zi, w); // c(Φ(γ(s)), zᵢ)
-        double cfuncp0 = this->operator()(p0, zi, w);    // c(Φ(γ(0)), zᵢ)
-    
-        double num = -2.0 * A1 * zi[1] * (w - cfuncps);
-        double den = ((D - A2) * commonB) - 2.0 * A1 * zi[1] * (w - cfuncp0);
-    
-        return num / den;
-    }
-    
-    
-    inline double hess_bdry_C_minus(double s, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk, double w) const {
-        double A1 = hess_bdry_A1(p0, p1, zi, zk);
-        double A2 = hess_bdry_A2(p0, p1, zi, zk);
-        double A3 = hess_bdry_A3(p0, p1, zi, zk);
-        double D = std::sqrt(A2 * A2 - 4 * A1 * A3);
-        double commonB = (p1[1] - p0[1]) + zi[0] * (p0[0] - p1[0]);
-    
-        // Compute the interpolated point p(s)
-        sdot::Point2<TS> p_s = p0;
-        p_s[0] = p0[0] + s * (p1[0] - p0[0]);
-        p_s[1] = p0[1] + s * (p1[1] - p0[1]);
-    
-        // Evaluate the cost function at s and at s = 0.
-        double cfuncps = this->operator()(p_s, zi, w); // c(Φ(γ(s)), zᵢ)
-        double cfuncp0 = this->operator()(p0, zi, w);    // c(Φ(γ(0)), zᵢ)
-    
-        double num = -2.0 * A1 * zi[1] * (w - cfuncps);
-        double den = ((-D - A2) * commonB) - 2.0 * A1 * zi[1] * (w - cfuncp0);
-    
-        return num / den;
-    }    
-
-    // Parameters for the cost function and the fstar functions:
-    TS kappa, gamma, g, f_cor, pi_0, c_p;
+    // Parameters for the cost function class:
+    TS kappa, gamma, g, f_cor, pi_0, c_p, Int;
 };
 
 } // namespace FunctionEnum

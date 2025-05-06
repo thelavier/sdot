@@ -127,7 +127,6 @@ typename ConvexPolyhedron2<Pc>::TF ConvexPolyhedron2<Pc>::integration_der_wrt_we
     for (size_t i1 = 0, i0 = nb_points() - 1; i1 < nb_points(); i0 = i1++) {
         if (arcs[i0]) {
             throw std::runtime_error("Arc integration not implemented.");
-
         } else {
             auto p0 = point(i0);
             auto p1 = point(i1);
@@ -137,25 +136,35 @@ typename ConvexPolyhedron2<Pc>::TF ConvexPolyhedron2<Pc>::integration_der_wrt_we
             Point2<TF> normal = rot90(edge); // rotates edge by 90 degrees
             normal = normalized(normal);     // get a unit normal
 
-            // Evaluate the cost function at the endpoints.
-            double cfuncp1 = func(p1, z, w);
-            double cfuncp0 = func(p0, z, w);
-
             // Compute the denominator that appears in integration formula.
             TF denom = (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
             TF scale = std::abs(p1[1] - p0[1]) + z[0] * std::abs(p0[0] - p1[0]);
             TF prefactor = z[1] * z[1] * normal[1] * norm_2(p1 - p0) / (func.f_cor * func.f_cor * func.g);
 
-            if ( std::fabs(denom) > tol * scale ) {
-                res += prefactor * func.fs(w - cfuncp1) / denom;
-                res -= prefactor * func.fs(w - cfuncp0) / denom;
-
+            if ( func.IntegralType() ) {
+                // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
+                constexpr int quadrature_points = 50;
+                // Bind all additional parameters into a lambda that takes only the integration variable t.
+                auto integrand = [&](TF t) -> TF {
+                    return func.hess_volume_integrand(t, p0, p1, z, w);
+                };
+                TF integral_value = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand, 0, 1);
+                res -= prefactor / z[1] * integral_value ;
             } else {
-                // Use the Limit expression
-                if (w > cfuncp0) {
-                    res -= prefactor / z[1] * func.gamma * func.fs(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
+                // Evaluate the cost function at the endpoints.
+                double cfuncp1 = func(p1, z, w);
+                double cfuncp0 = func(p0, z, w);
+
+                if ( std::fabs(denom) > tol * scale ) {
+                    res += prefactor * func.fs(w - cfuncp1) / denom;
+                    res -= prefactor * func.fs(w - cfuncp0) / denom;
                 } else {
-                    res += 0;
+                    // Use the Limit expression
+                    if (w > cfuncp0) {
+                        res -= prefactor / z[1] * func.gamma * func.fs(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
+                    } else {
+                        res += 0;
+                    }
                 }
             }
         }
@@ -384,7 +393,6 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
 // COMPRESSIBLE HESSIAN BOUNDARY
 template<class Pc> template<class Grid>
 void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void( const BoundaryItem &boundary_item )> &f, TF psi ) const {    
-    // TF tol = 1e-12;
     auto yi = sphere_center;
     auto zi = func.seed_inverse(yi);
     auto w = func.weight_inverse(psi, zi);
@@ -407,41 +415,21 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
         if ( num_dirac_1 == TI( -1 ) ) {
             item.measure += 0;
         } else {
-            // Evaluate the cost function at the endpoints.
-            // double cfuncp1 = func(p1, zi, w);
-            // double cfuncp0 = func(p0, zi, w);
-
-            // Compute the denominator that appears in integration formula.
-            // TF denom = p1[1] - p0[1] + zi[0] * (p0[0] - p1[0]);
-            // TF scale = std::abs(p1[1] - p0[1]) + zi[0] * std::abs(p0[0] - p1[0]);
-
             // Compute prefactor and common terms. 
-            TF prefactor = 2 * dist * zi[1] * norm_2(p1 - p0) / (func.f_cor * func.f_cor * func.g);
-            // TF coeff1 = func.hess_bdry_K_plus(1.0, p0, p1, zi, zk, w) * func.hess_bdry_K_minus(1.0, p0, p1, zi, zk, w);
-            // TF coeff0 = func.hess_bdry_K_plus(0.0, p0, p1, zi, zk, w) * func.hess_bdry_K_minus(0.0, p0, p1, zi, zk, w);
-            // TF ah1 = func.appell_F1(func.gamma / (func.gamma - 1.0), 0.5, 0.5, 2.0 + 1.0 / (func.gamma - 1.0), func.hess_bdry_C_minus(1.0, p0, p1, zi, zk, w), func.hess_bdry_C_plus(1.0, p0, p1, zi, zk, w));
-            // TF ah0 = func.appell_F1(func.gamma / (func.gamma - 1.0), 0.5, 0.5, 2.0 + 1.0 / (func.gamma - 1.0), func.hess_bdry_C_minus(0.0, p0, p1, zi, zk, w), func.hess_bdry_C_plus(0.0, p0, p1, zi, zk, w));
-            // TF g1 = std::sqrt(func.hess_bdry_A1(p0, p1, zi, zk) + func.hess_bdry_A2(p0, p1, zi, zk) + func.hess_bdry_A3(p0, p1, zi, zk));
-            // TF g0 = std::sqrt(func.hess_bdry_A3(p0, p1, zi, zk));
+            TF prefactor = 2 * dist;
 
-            // if ( std::fabs(denom) > tol * scale ) {
-            //     item.measure -= prefactor * func.fs(w - cfuncp1) * coeff1 * ah1 / (g1 * denom);
-            //     item.measure += prefactor * func.fs(w - cfuncp0) * coeff0 * ah0 / (g0 * denom);
-
-            // } else {
             // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
-            constexpr int quadrature_points = 20;
+            constexpr int quadrature_points = 50;
             // Bind all additional parameters into a lambda that takes only the integration variable t.
             auto integrand = [&](TF t) -> TF {
                 return func.hess_bdry_integrand(t, p0, p1, zi, zk, w);
             };
             TF integral_value = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand, 0, 1);
-            item.measure += prefactor / zi[1] * integral_value ;
+            item.measure += prefactor * integral_value ;
 
-            // }
-
-            f( item );
         }
+
+        f( item );
     }
 }
 
@@ -1708,8 +1696,8 @@ void ConvexPolyhedron2<Pc>::add_centroid_contrib( Pt &ctd, TF &mea, const SpaceF
 // COMPRESSIBLE CENTROID
 template<class Pc>
 void ConvexPolyhedron2<Pc>::add_centroid_contrib( Pt &ctd, TF &mea, const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, TF psi ) const {
-    mea = integration(sf, func, psi);
-    ctd = { 0, 0 };
+    TF deltamea = integration(sf, func, psi);
+    Pt deltactd = { 0, 0 };
     TF tol = 1e-12;
     auto z = func.seed_inverse(sphere_center);
     auto w = func.weight_inverse(psi, z);
@@ -1718,7 +1706,6 @@ void ConvexPolyhedron2<Pc>::add_centroid_contrib( Pt &ctd, TF &mea, const SpaceF
     for (size_t i1 = 0, i0 = nb_points() - 1; i1 < nb_points(); i0 = i1++) {
         if (arcs[i0]) {
             throw std::runtime_error("Arc integration not implemented.");
-
         } else {
             auto p0 = point(i0);
             auto p1 = point(i1);
@@ -1729,70 +1716,116 @@ void ConvexPolyhedron2<Pc>::add_centroid_contrib( Pt &ctd, TF &mea, const SpaceF
             Point2<TF> normal = rot90(edge); // rotates edge by 90 degrees
             normal = normalized(normal);     // get a unit normal
 
-            // Evaluate the cost function at the endpoints.
-            double cfuncp1 = func(p1, z, w);
-            double cfuncp0 = func(p0, z, w);
-            double cfuncmixed = func(mixedp, z, w);
-
             // Compute the prefactors
-            TF prefactorctd1 = z[1] * z[1] * normal[1] / (func.f_cor * func.f_cor * func.f_cor * func.f_cor * func.g) * norm_2(p1 - p0);
-            TF prefactorctd21 = z[1] * z[1] * normal[0] / (z[0] * func.f_cor * func.f_cor * func.g * func.g) * norm_2(p1 - p0);
-            TF prefactorctd22 = z[1] * normal[1] / (2 * func.f_cor * func.f_cor * func.f_cor * func.f_cor * func.g * func.g) * norm_2(p1 - p0) * (func.gamma - 1);
+            TF prefactorctd1 = z[1] * normal[1] * norm_2(p1 - p0) / (func.f_cor * func.f_cor * func.f_cor * func.f_cor * func.g);
+            TF prefactorctd21 = z[1] * normal[0] * norm_2(p1 - p0) / (z[0] * func.f_cor * func.f_cor * func.g * func.g);
+            TF prefactorctd22 = z[1] * normal[1] * norm_2(p1 - p0) / (2 * func.f_cor * func.f_cor * func.f_cor * func.f_cor * func.g * func.g);
 
-            // Compute the denominator that appears in integration formula.
-            TF denom1 = (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
-            TF scale1 = std::abs(p1[1] - p0[1]) + z[0] * std::abs(p0[0] - p1[0]);
-            TF denom2 = p0[0] - p1[0];
-            TF scale2 = std::abs(p0[0] - p1[0]);
+            if ( func.IntegralType() ) {
+                // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
+                constexpr int quadrature_points = 50;
 
-            if ( (std::fabs(denom1) > tol * scale1) && (std::fabs(denom2) > tol * scale2) ) {
-                // Default expressions
+                // Bind all additional parameters into a lambda that takes only the integration variable t.
+                auto integrand_1 = [&](TF t) -> TF {
+                    return func.ctd_0_integrand(t, p0, p1, z, w);
+                };
+                auto integrand_2 = [&](TF t) -> TF {
+                    return func.ctd_1_1_integrand(t, p0, p1, z, w);
+                };
+                auto integrand_3 = [&](TF t) -> TF {
+                    return func.ctd_1_2_integrand(t, p0, p1, z, w);
+                };
 
-                ctd[0] -= prefactorctd1 * func.fsa1(w - cfuncp1) * func.ctd_c1_coeff(1, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
-                ctd[0] += prefactorctd1 * func.fsa1(w - cfuncp0) * func.ctd_c1_coeff(0, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
+                TF integral_value_1 = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand_1, 0, 1);
+                TF integral_value_2 = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand_2, 0, 1);
+                TF integral_value_3 = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand_3, 0, 1);
 
-                ctd[1] -= prefactorctd21 * func.fsa1(w - cfuncp1) * func.ctd_c2_coeff_1(1, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
-                ctd[1] += prefactorctd21 * func.fsa1(w - cfuncp0) * func.ctd_c2_coeff_1(0, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
+                deltactd[0] -= prefactorctd1 * integral_value_1;
+                deltactd[1] += prefactorctd21 * integral_value_2;
+                deltactd[1] += prefactorctd22 * integral_value_3;
 
-                ctd[1] += prefactorctd22 * func.fs(w - cfuncp1) * func.ctd_c2_coeff_2(1, z, p0, p1, w) / (4 * (4 * func.gamma - 3) * denom2);
-                ctd[1] -= prefactorctd22 * func.fs(w - cfuncp0) * func.ctd_c2_coeff_2(0, z, p0, p1, w) / (4 * (4 * func.gamma - 3) * denom2);
+                // std::ostringstream debugStream;
+                // debugStream << "Iteration " << i0 << " -> " << i1 << ":\n";
+                // debugStream << "  z: (" << z[0] << ", " << z[1] << ")\n";
+                // debugStream << "  w: " << w << "\n";
+                // debugStream << "  p0: (" << p0[0] << ", " << p0[1] << ")\n";
+                // debugStream << "  p1: (" << p1[0] << ", " << p1[1] << ")\n";
+                // debugStream << "  normal: (" << normal[0] << ", " << normal[1] << ")\n";
+                // debugStream << "  prefactor1: " << prefactorctd1 << "\n";
+                // debugStream << "  prefactor21: " << prefactorctd21 << "\n";
+                // debugStream << "  prefactor22: " << prefactorctd22 << "\n";
+                // debugStream << "  integral1: " << integral_value_1 << "\n";
+                // debugStream << "  integral2: " << integral_value_2 << "\n";
+                // debugStream << "  integral3: " << integral_value_3 << "\n";
+                // debugStream << "------------------------------------" << std::endl;
+                // std::cout << debugStream.str() << std::flush;
 
-            } else if ( (std::fabs(denom1) < tol * scale1) && (std::fabs(denom2) > tol * scale2) ) {
-                // Use the Limit expressions
-                if ( w > cfuncp0 ) {
-                    ctd[0] -= prefactorctd1 / z[1] * (2 * func.gamma - 1) * (p0[0] + p1[0]) * func.fsa1(w - cfuncp0) / (2 * (func.gamma - 1) * (w - cfuncp0));
-                } else {
-                    ctd[0] += 0;
-                }
+            } else {
+                // TO FIX IS BROKEN
+                // Evaluate the cost function at the endpoints.
+                double cfuncp1 = func(p1, z, w);
+                double cfuncp0 = func(p0, z, w);
+                double cfuncmixed = func(mixedp, z, w);
 
-                if ( w > cfuncp1 ) {
-                    ctd[1] += prefactorctd21 / z[1] * (2 * func.gamma - 1) * (z[0] * (p0[0] - p1[0]) + 2 * p1[1]) * func.fsa1(w - cfuncp1) / (2 * (func.gamma - 1) * (w - cfuncp1));
-                } else {
-                    ctd[1] += 0;
-                }
+                // Compute the denominator that appears in integration formula.
+                TF denom1 = (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
+                TF scale1 = std::abs(p1[1] - p0[1]) + z[0] * std::abs(p0[0] - p1[0]);
+                TF denom2 = p0[0] - p1[0];
+                TF scale2 = std::abs(p0[0] - p1[0]);
 
-                ctd[1] += prefactorctd22 / (func.gamma - 1) * func.fs(w - cfuncp0) * (p0[0] * p0[0] + p1[0] * p1[0] + p0[0] * p1[0]) / 3;
+                if ( (std::fabs(denom1) > tol * scale1) && (std::fabs(denom2) > tol * scale2) ) {
+                    // Default expressions
 
-            } else if ( (std::fabs(denom1) > tol * scale1) && (std::fabs(denom2) < tol * scale2) ) {
-                // Default expressions
+                    ctd[0] -= prefactorctd1 * func.fsa1(w - cfuncp1) * func.ctd_c1_coeff(1, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
+                    ctd[0] += prefactorctd1 * func.fsa1(w - cfuncp0) * func.ctd_c1_coeff(0, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
 
-                ctd[0] -= prefactorctd1 * func.fsa1(w - cfuncp1) * func.ctd_c1_coeff(1, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
-                ctd[0] += prefactorctd1 * func.fsa1(w - cfuncp0) * func.ctd_c1_coeff(0, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
+                    ctd[1] -= prefactorctd21 * func.fsa1(w - cfuncp1) * func.ctd_c2_coeff_1(1, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
+                    ctd[1] += prefactorctd21 * func.fsa1(w - cfuncp0) * func.ctd_c2_coeff_1(0, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
 
-                ctd[1] -= prefactorctd21 * func.fsa1(w - cfuncp1) * func.ctd_c2_coeff_1(1, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
-                ctd[1] += prefactorctd21 * func.fsa1(w - cfuncp0) * func.ctd_c2_coeff_1(0, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
+                    ctd[1] += prefactorctd22 * func.fs(w - cfuncp1) * func.ctd_c2_coeff_2(1, z, p0, p1, w) / (4 * (4 * func.gamma - 3) * denom2);
+                    ctd[1] -= prefactorctd22 * func.fs(w - cfuncp0) * func.ctd_c2_coeff_2(0, z, p0, p1, w) / (4 * (4 * func.gamma - 3) * denom2);
 
-                // Use the Limit expression 
-                if ( w > cfuncmixed ) {
-                    ctd[1] += prefactorctd22 / (func.gamma - 1) * p1[0] * p1[0] * (func.fsa1(w - cfuncp1) - func.fsa1(w - cfuncmixed)) / (p0[1] - p1[1]);
+                } else if ( (std::fabs(denom1) < tol * scale1) && (std::fabs(denom2) > tol * scale2) ) {
+                    // Use the Limit expressions
+                    if ( w > cfuncp0 ) {
+                        ctd[0] -= prefactorctd1 / z[1] * (2 * func.gamma - 1) * (p0[0] + p1[0]) * func.fsa1(w - cfuncp0) / (2 * (func.gamma - 1) * (w - cfuncp0));
+                    } else {
+                        ctd[0] += 0;
+                    }
 
-                } else {
-                    ctd[1] += 0;
+                    if ( w > cfuncp1 ) {
+                        ctd[1] += prefactorctd21 / z[1] * (2 * func.gamma - 1) * (z[0] * (p0[0] - p1[0]) + 2 * p1[1]) * func.fsa1(w - cfuncp1) / (2 * (func.gamma - 1) * (w - cfuncp1));
+                    } else {
+                        ctd[1] += 0;
+                    }
 
+                    ctd[1] += prefactorctd22 / (func.gamma - 1) * func.fs(w - cfuncp0) * (p0[0] * p0[0] + p1[0] * p1[0] + p0[0] * p1[0]) / 3;
+
+                } else if ( (std::fabs(denom1) > tol * scale1) && (std::fabs(denom2) < tol * scale2) ) {
+                    // Default expressions
+
+                    ctd[0] -= prefactorctd1 * func.fsa1(w - cfuncp1) * func.ctd_c1_coeff(1, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
+                    ctd[0] += prefactorctd1 * func.fsa1(w - cfuncp0) * func.ctd_c1_coeff(0, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
+
+                    ctd[1] -= prefactorctd21 * func.fsa1(w - cfuncp1) * func.ctd_c2_coeff_1(1, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
+                    ctd[1] += prefactorctd21 * func.fsa1(w - cfuncp0) * func.ctd_c2_coeff_1(0, z, p0, p1, w) / (2 * (3 * func.gamma - 2) * denom1 * denom1);
+
+                    // Use the Limit expression 
+                    if ( w > cfuncmixed ) {
+                        ctd[1] += prefactorctd22 / (func.gamma - 1) * p1[0] * p1[0] * (func.fsa1(w - cfuncp1) - func.fsa1(w - cfuncmixed)) / (p0[1] - p1[1]);
+
+                    } else {
+                        ctd[1] += 0;
+
+                    }
                 }
             }
         }
     }
+
+    mea += deltamea;
+    ctd += deltactd;
+
 }
 
 template<class Pc>
@@ -1910,7 +1943,7 @@ typename ConvexPolyhedron2<Pc>::Pt ConvexPolyhedron2<Pc>::random_point() const {
 // COMPRESSIBLE INTERNAL ENERGY
 template<class Pc>
 typename Pc::TF ConvexPolyhedron2<Pc>::internal_energy( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, TF psi ) const {
-    TF vol = 0;
+    TF vol = integration(sf, func, psi);
     TF ie = 0;
     TF tol = 1e-12;
     auto z = func.seed_inverse(sphere_center);
@@ -1931,29 +1964,35 @@ typename Pc::TF ConvexPolyhedron2<Pc>::internal_energy( const SpaceFunctions::Co
             Point2<TF> normal = rot90(edge); // rotates edge by 90 degrees
             normal = normalized(normal);     // get a unit normal
 
-            // Evaluate the cost function at the endpoints.
-            double cfuncp1 = func(p1, z, w);
-            double cfuncp0 = func(p0, z, w);
-
-            // Compute the denominator that appears in integration formula.
-            TF denom = (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
-            TF scale = std::abs(p1[1] - p0[1]) + z[0] * std::abs(p0[0] - p1[0]);
-
-            if ( std::fabs(denom) > tol * scale ) {
-                ie += (z[1] * z[1] * normal[1] * (func.gamma - 1) * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp1) * (w - cfuncp1) * std::pow(func.fsd1(w - cfuncp1), func.gamma) / ((3 * func.gamma - 2) * denom);
-                ie -= (z[1] * z[1] * normal[1] * (func.gamma - 1) * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp0) * (w - cfuncp0) * std::pow(func.fsd1(w - cfuncp0), func.gamma) / ((3 * func.gamma - 2) * denom);
-
-                vol += (z[1] * z[1] * normal[1] * func.fsa1(w - cfuncp1)) / (func.f_cor * func.f_cor * func.g) * norm_2(p1 - p0) / denom;
-                vol -= (z[1] * z[1] * normal[1] * func.fsa1(w - cfuncp0)) / (func.f_cor * func.f_cor * func.g) * norm_2(p1 - p0) / denom;
-
+            // Compute the prefactos
+            TF prefactor = z[1] * normal[1] * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1)) * norm_2(p1 - p0);
+            
+            if ( func.IntegralType() ) {
+                // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
+                constexpr int quadrature_points = 50;
+                // Bind all additional parameters into a lambda that takes only the integration variable t.
+                auto integrand = [&](TF t) -> TF {
+                    return func.ie_integrand(t, p0, p1, z, w);
+                };
+                TF integral_value = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand, 0, 1);
+                ie -= prefactor * integral_value ;
             } else {
-                // Use the Limit expression
-                ie -= (z[1] * normal[1] * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp0) * std::pow(func.fsd1(w - cfuncp0), func.gamma);
+                // Evaluate the cost function at the endpoints.
+                double cfuncp1 = func(p1, z, w);
+                double cfuncp0 = func(p0, z, w);
 
-                if ( w > cfuncp0 ) {
-                    vol -= (z[1] * normal[1] / (func.f_cor * func.f_cor * func.g)) * norm_2(p1 - p0) * (2 * func.gamma - 1) * func.fsa1(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
+                // Compute the denominator that appears in integration formula.
+                TF denom = (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
+                TF scale = std::abs(p1[1] - p0[1]) + z[0] * std::abs(p0[0] - p1[0]);
+
+                if ( std::fabs(denom) > tol * scale ) {
+                    ie += (z[1] * z[1] * normal[1] * (func.gamma - 1) * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp1) * (w - cfuncp1) * std::pow(func.fsd1(w - cfuncp1), func.gamma) / ((3 * func.gamma - 2) * denom);
+                    ie -= (z[1] * z[1] * normal[1] * (func.gamma - 1) * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp0) * (w - cfuncp0) * std::pow(func.fsd1(w - cfuncp0), func.gamma) / ((3 * func.gamma - 2) * denom);
+
                 } else {
-                    vol += 0;
+                    // Use the Limit expression
+                    ie -= (z[1] * normal[1] * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1))) * norm_2(p1 - p0) * (w - cfuncp0) * std::pow(func.fsd1(w - cfuncp0), func.gamma);
+
                 }
             }
         }
@@ -1988,34 +2027,47 @@ typename Pc::TF ConvexPolyhedron2<Pc>::integration( const SpaceFunctions::Consta
             Point2<TF> normal = rot90(edge); // rotates edge by 90 degrees
             normal = normalized(normal);     // get a unit normal
 
-            // std::ostringstream debugStream;
-            // debugStream << "Iteration " << i0 << " -> " << i1 << ":\n";
-            // debugStream << "  z: (" << z[0] << ", " << z[1] << ")\n";
-            // debugStream << "  w: " << w << "\n";
-            // debugStream << "  p0: (" << p0[0] << ", " << p0[1] << ")\n";
-            // debugStream << "  p1: (" << p1[0] << ", " << p1[1] << ")\n";
-            // debugStream << "  normal: (" << normal[0] << ", " << normal[1] << ")\n";
-
-            // Evaluate the cost function at the endpoints.
-            double cfuncp1 = func(p1, z, w);
-            double cfuncp0 = func(p0, z, w);
-
-            // Compute the denominator that appears in integration formula.
-            TF denom = (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
-            TF scale = std::abs(p1[1] - p0[1]) + z[0] * std::abs(p0[0] - p1[0]);
-
+            // Compute prefactor
             TF prefactor = z[1] * z[1] * normal[1] * norm_2(p1 - p0) / (func.f_cor * func.f_cor * func.g);
 
-            if ( std::fabs(denom) > tol * scale ) {
-                vol += prefactor * func.fsa1(w - cfuncp1) / denom;
-                vol -= prefactor * func.fsa1(w - cfuncp0) / denom;
-
+            if ( func.IntegralType() ){
+                // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
+                constexpr int quadrature_points = 50;
+                // Bind all additional parameters into a lambda that takes only the integration variable t.
+                auto integrand = [&](TF t) -> TF {
+                    return func.volume_integrand(t, p0, p1, z, w);
+                };
+                TF integral_value = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand, 0, 1);
+                vol -= prefactor / z[1] * integral_value ;
             } else {
-                // Use the Limit expression
-                if ( w > cfuncp0 ) {
-                    vol -= prefactor / z[1] * (2 * func.gamma - 1) * func.fsa1(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
+
+                // std::ostringstream debugStream;
+                // debugStream << "Iteration " << i0 << " -> " << i1 << ":\n";
+                // debugStream << "  z: (" << z[0] << ", " << z[1] << ")\n";
+                // debugStream << "  w: " << w << "\n";
+                // debugStream << "  p0: (" << p0[0] << ", " << p0[1] << ")\n";
+                // debugStream << "  p1: (" << p1[0] << ", " << p1[1] << ")\n";
+                // debugStream << "  normal: (" << normal[0] << ", " << normal[1] << ")\n";
+
+                // Evaluate the cost function at the endpoints.
+                double cfuncp1 = func(p1, z, w);
+                double cfuncp0 = func(p0, z, w);
+
+                // Compute the denominator that appears in integration formula.
+                TF denom = (p1[1] - p0[1] + z[0] * (p0[0] - p1[0]));
+                TF scale = std::abs(p1[1] - p0[1]) + z[0] * std::abs(p0[0] - p1[0]);
+
+                if ( std::fabs(denom) > tol * scale ) {
+                    vol += prefactor * func.fsa1(w - cfuncp1) / denom;
+                    vol -= prefactor * func.fsa1(w - cfuncp0) / denom;
+
                 } else {
-                    vol += 0;
+                    // Use the Limit expression
+                    if ( w > cfuncp0 ) {
+                        vol -= prefactor / z[1] * (2 * func.gamma - 1) * func.fsa1(w - cfuncp0) / ((func.gamma - 1) * (w - cfuncp0));
+                    } else {
+                        vol += 0;
+                    }
                 }
             }
 

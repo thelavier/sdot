@@ -143,7 +143,7 @@ typename ConvexPolyhedron2<Pc>::TF ConvexPolyhedron2<Pc>::integration_der_wrt_we
 
             if ( func.IntegralType() ) {
                 // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
-                constexpr int quadrature_points = 50;
+                constexpr int quadrature_points = 12;
                 // Bind all additional parameters into a lambda that takes only the integration variable t.
                 auto integrand = [&](TF t) -> TF {
                     return func.hess_volume_integrand(t, p0, p1, z, w);
@@ -398,7 +398,7 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
     auto w = func.weight_inverse(psi, zi);
 
     for( size_t i1 = 0, i0 = nb_points() - 1; i1 < nb_points(); i0 = i1++ ) {
-        BoundaryItem item;
+        BoundaryItem item{};
         auto p0 = point(i0);
         auto p1 = point(i1);
         item.points[ 0 ] = p0;
@@ -406,26 +406,27 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
         TI num_dirac_1 = cut_ids[ i0 ];
         item.id = num_dirac_1;
         item.measure = 0;
-        
-        TI m_num_dirac_1 = num_dirac_1 % nb_diracs, d_num_dirac_1 = num_dirac_1 / nb_diracs;
-        auto yk = grid.sym( positions[ m_num_dirac_1 ], int( d_num_dirac_1 ) - 1 );
-        TF dist = norm_2(yi - yk);
-        auto zk = func.seed_inverse(yk);
 
         if ( num_dirac_1 == TI( -1 ) ) {
             item.measure += 0;
         } else {
+            // Find the neighbouring seed
+            TI m_num_dirac_1 = num_dirac_1 % nb_diracs, d_num_dirac_1 = num_dirac_1 / nb_diracs;
+            auto yk = grid.sym( positions[ m_num_dirac_1 ], int( d_num_dirac_1 ) - 1 );
+            TF dist = norm_2(yi - yk);
+            auto zk = func.seed_inverse(yk);
+
             // Compute prefactor and common terms. 
             TF prefactor = 2 * dist;
 
             // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
-            constexpr int quadrature_points = 50;
+            constexpr int quadrature_points = 12;
             // Bind all additional parameters into a lambda that takes only the integration variable t.
             auto integrand = [&](TF t) -> TF {
                 return func.hess_bdry_integrand(t, p0, p1, zi, zk, w);
             };
             TF integral_value = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand, 0, 1);
-            item.measure += prefactor * integral_value ;
+            item.measure += prefactor * integral_value;
 
         }
 
@@ -1723,7 +1724,7 @@ void ConvexPolyhedron2<Pc>::add_centroid_contrib( Pt &ctd, TF &mea, const SpaceF
 
             if ( func.IntegralType() ) {
                 // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
-                constexpr int quadrature_points = 50;
+                constexpr int quadrature_points = 12;
 
                 // Bind all additional parameters into a lambda that takes only the integration variable t.
                 auto integrand_1 = [&](TF t) -> TF {
@@ -1969,7 +1970,7 @@ typename Pc::TF ConvexPolyhedron2<Pc>::internal_energy( const SpaceFunctions::Co
             
             if ( func.IntegralType() ) {
                 // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
-                constexpr int quadrature_points = 50;
+                constexpr int quadrature_points = 12;
                 // Bind all additional parameters into a lambda that takes only the integration variable t.
                 auto integrand = [&](TF t) -> TF {
                     return func.ie_integrand(t, p0, p1, z, w);
@@ -2032,7 +2033,7 @@ typename Pc::TF ConvexPolyhedron2<Pc>::integration( const SpaceFunctions::Consta
 
             if ( func.IntegralType() ){
                 // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
-                constexpr int quadrature_points = 50;
+                constexpr int quadrature_points = 12;
                 // Bind all additional parameters into a lambda that takes only the integration variable t.
                 auto integrand = [&](TF t) -> TF {
                     return func.volume_integrand(t, p0, p1, z, w);

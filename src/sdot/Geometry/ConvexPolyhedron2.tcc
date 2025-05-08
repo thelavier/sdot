@@ -4,7 +4,6 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <boost/math/quadrature/gauss.hpp>
 
 #ifdef PD_WANT_STAT
 #include "../Support/Stat.h"
@@ -142,13 +141,14 @@ typename ConvexPolyhedron2<Pc>::TF ConvexPolyhedron2<Pc>::integration_der_wrt_we
             TF prefactor = z[1] * z[1] * normal[1] * norm_2(p1 - p0) / (func.f_cor * func.f_cor * func.g);
 
             if ( func.IntegralType() ) {
-                // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
-                constexpr int quadrature_points = 12;
-                // Bind all additional parameters into a lambda that takes only the integration variable t.
-                auto integrand = [&](TF t) -> TF {
-                    return func.hess_volume_integrand(t, p0, p1, z, w);
-                };
-                TF integral_value = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand, 0, 1);
+                // Use prebuilt quadrature table
+                int Nq = func.IntegralResolution();
+                TF integral_value = TF(0);
+                for(int i = 0; i < Nq; ++i) {
+                    TF t = func.quad_nodes[i];
+                    TF quadw = func.quad_weights[i];
+                    integral_value += quadw * func.hess_volume_integrand(t, p0, p1, z, w);
+                }
                 res -= prefactor / z[1] * integral_value ;
             } else {
                 // Evaluate the cost function at the endpoints.
@@ -419,13 +419,14 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
             // Compute prefactor and common terms. 
             TF prefactor = 2 * dist;
 
-            // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
-            constexpr int quadrature_points = 12;
-            // Bind all additional parameters into a lambda that takes only the integration variable t.
-            auto integrand = [&](TF t) -> TF {
-                return func.hess_bdry_integrand(t, p0, p1, zi, zk, w);
-            };
-            TF integral_value = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand, 0, 1);
+            // Use prebuilt quadrature table
+            int Nq = func.IntegralResolution();
+            TF integral_value = TF(0);
+            for(int i = 0; i < Nq; ++i) {
+                TF t = func.quad_nodes[i];
+                TF quadw = func.quad_weights[i];
+                integral_value += quadw * func.hess_bdry_integrand(t, p0, p1, zi, zk, w);
+            }
             item.measure += prefactor * integral_value;
 
         }
@@ -1723,43 +1724,22 @@ void ConvexPolyhedron2<Pc>::add_centroid_contrib( Pt &ctd, TF &mea, const SpaceF
             TF prefactorctd22 = z[1] * normal[1] * norm_2(p1 - p0) / (2 * func.f_cor * func.f_cor * func.f_cor * func.f_cor * func.g * func.g);
 
             if ( func.IntegralType() ) {
-                // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
-                constexpr int quadrature_points = 12;
-
-                // Bind all additional parameters into a lambda that takes only the integration variable t.
-                auto integrand_1 = [&](TF t) -> TF {
-                    return func.ctd_0_integrand(t, p0, p1, z, w);
-                };
-                auto integrand_2 = [&](TF t) -> TF {
-                    return func.ctd_1_1_integrand(t, p0, p1, z, w);
-                };
-                auto integrand_3 = [&](TF t) -> TF {
-                    return func.ctd_1_2_integrand(t, p0, p1, z, w);
-                };
-
-                TF integral_value_1 = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand_1, 0, 1);
-                TF integral_value_2 = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand_2, 0, 1);
-                TF integral_value_3 = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand_3, 0, 1);
+                // Use prebuilt quadrature table
+                int Nq = func.IntegralResolution();
+                TF integral_value_1 = TF(0);
+                TF integral_value_2 = TF(0);
+                TF integral_value_3 = TF(0);
+                for(int i = 0; i < Nq; ++i) {
+                    TF t = func.quad_nodes[i];
+                    TF quadw = func.quad_weights[i];
+                    integral_value_1 += quadw * func.ctd_0_integrand(t, p0, p1, z, w);
+                    integral_value_2 += quadw * func.ctd_1_1_integrand(t, p0, p1, z, w);
+                    integral_value_3 += quadw * func.ctd_1_2_integrand(t, p0, p1, z, w);
+                }
 
                 deltactd[0] -= prefactorctd1 * integral_value_1;
                 deltactd[1] += prefactorctd21 * integral_value_2;
                 deltactd[1] += prefactorctd22 * integral_value_3;
-
-                // std::ostringstream debugStream;
-                // debugStream << "Iteration " << i0 << " -> " << i1 << ":\n";
-                // debugStream << "  z: (" << z[0] << ", " << z[1] << ")\n";
-                // debugStream << "  w: " << w << "\n";
-                // debugStream << "  p0: (" << p0[0] << ", " << p0[1] << ")\n";
-                // debugStream << "  p1: (" << p1[0] << ", " << p1[1] << ")\n";
-                // debugStream << "  normal: (" << normal[0] << ", " << normal[1] << ")\n";
-                // debugStream << "  prefactor1: " << prefactorctd1 << "\n";
-                // debugStream << "  prefactor21: " << prefactorctd21 << "\n";
-                // debugStream << "  prefactor22: " << prefactorctd22 << "\n";
-                // debugStream << "  integral1: " << integral_value_1 << "\n";
-                // debugStream << "  integral2: " << integral_value_2 << "\n";
-                // debugStream << "  integral3: " << integral_value_3 << "\n";
-                // debugStream << "------------------------------------" << std::endl;
-                // std::cout << debugStream.str() << std::flush;
 
             } else {
                 // TO FIX IS BROKEN
@@ -1969,13 +1949,14 @@ typename Pc::TF ConvexPolyhedron2<Pc>::internal_energy( const SpaceFunctions::Co
             TF prefactor = z[1] * normal[1] * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1)) * norm_2(p1 - p0);
             
             if ( func.IntegralType() ) {
-                // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
-                constexpr int quadrature_points = 12;
-                // Bind all additional parameters into a lambda that takes only the integration variable t.
-                auto integrand = [&](TF t) -> TF {
-                    return func.ie_integrand(t, p0, p1, z, w);
-                };
-                TF integral_value = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand, 0, 1);
+                // Use prebuilt quadrature table
+                int Nq = func.IntegralResolution();
+                TF integral_value = TF(0);
+                for(int i = 0; i < Nq; ++i) {
+                    TF t = func.quad_nodes[i];
+                    TF quadw = func.quad_weights[i];
+                    integral_value += quadw * func.ie_integrand(t, p0, p1, z, w);
+                }
                 ie -= prefactor * integral_value ;
             } else {
                 // Evaluate the cost function at the endpoints.
@@ -2032,13 +2013,14 @@ typename Pc::TF ConvexPolyhedron2<Pc>::integration( const SpaceFunctions::Consta
             TF prefactor = z[1] * z[1] * normal[1] * norm_2(p1 - p0) / (func.f_cor * func.f_cor * func.g);
 
             if ( func.IntegralType() ){
-                // Use Boost's Gauss–Legendre quadrature when the denominator is near zero.
-                constexpr int quadrature_points = 12;
-                // Bind all additional parameters into a lambda that takes only the integration variable t.
-                auto integrand = [&](TF t) -> TF {
-                    return func.volume_integrand(t, p0, p1, z, w);
-                };
-                TF integral_value = boost::math::quadrature::gauss<TF, quadrature_points>::integrate(integrand, 0, 1);
+                // Use prebuilt quadrature table
+                int Nq = func.IntegralResolution();
+                TF integral_value = TF(0);
+                for(int i = 0; i < Nq; ++i) {
+                    TF t = func.quad_nodes[i];
+                    TF quadw = func.quad_weights[i];
+                    integral_value += quadw * func.volume_integrand(t, p0, p1, z, w);
+                }
                 vol -= prefactor / z[1] * integral_value ;
             } else {
 

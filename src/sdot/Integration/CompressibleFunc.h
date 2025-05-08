@@ -4,6 +4,43 @@
 #include "../Support/Assert.h"  // Make sure to include the assertions header.
 #include <cmath>
 #include <tuple>
+#include <vector>
+#include <Eigen/Dense>
+
+template<typename TS>
+inline void build_legendre_table(int N,
+                                 std::vector<TS> &nodes,
+                                 std::vector<TS> &weights)
+{
+    // 1) recurrence βᵢ = i / sqrt(4i^2 - 1), i=1…N-1
+    Eigen::VectorXd beta( (N>1) ? N-1 : 0 );
+    for(int i = 1; i < N; ++i) {
+        beta[i-1] = TS(i) / std::sqrt( TS(4*i*i - 1) );
+    }
+
+    // 2) form the symmetric tridiagonal Jacobi matrix J
+    Eigen::MatrixXd J = Eigen::MatrixXd::Zero(N,N);
+    for(int i = 0; i+1 < N; ++i) {
+        J(i,i+1) = beta[i];
+        J(i+1,i) = beta[i];
+    }
+
+    // 3) compute eigenpairs J v = λ v
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(J);
+    auto λ = es.eigenvalues();     // λ[i] ∈ [ -1, 1 ]
+    auto V = es.eigenvectors();    // V.col(i) is the i-th normalized eigenvector
+
+    // 4) map to [0,1] and compute weights
+    nodes .resize(N);
+    weights.resize(N);
+    for(int i = 0; i < N; ++i) {
+        // λ ∈ [-1,1] → t ∈ [0,1]
+        nodes[i]   = TS(0.5)*(λ[i] + TS(1));
+        // weight = 2 * (V₀ᵢ)², then scale by (dt/dλ)=½
+        TS w0 = V(0,i)*V(0,i) * TS(2);
+        weights[i] = w0 * TS(0.5);
+    }
+}
 
 namespace sdot {
     template <class TF> struct Point2;  // forward declaration
@@ -62,6 +99,10 @@ struct CompressibleFunc {
         return Int; // True for line integrals, False for vertex evaluations
     }
 
+    inline int IntegralResolution() const {
+        return Int_res;
+    }
+
     N<0> need_ball_cut() const {
         return N<0>();
     }
@@ -69,6 +110,13 @@ struct CompressibleFunc {
     template<class TF>
     void span_for_viz( const TF &f, TS w ) const {
         // Optionally, define a span for visualization.
+    }
+
+    // Construct and immediately build the GL table
+    CompressibleFunc(TS kappa_, TS gamma_, TS g_, TS f_cor_, TS pi_0_, TS c_p_, TS Int_, int Int_res_) : kappa(kappa_), gamma(gamma_), g(g_), f_cor(f_cor_), pi_0(pi_0_), c_p(c_p_), Int(Int_), Int_res(Int_res_) {
+        quad_nodes .resize(Int_res);
+        quad_weights.resize(Int_res);
+        build_legendre_table<TS>(Int_res, quad_nodes, quad_weights);
     }
 
     // F Star Functions
@@ -322,8 +370,12 @@ struct CompressibleFunc {
         return (f_star_prime_value / grad_norm) * ds;
     }
 
+    // storage for the table
+    std::vector<TS> quad_nodes, quad_weights;
+
     // Parameters for the cost function class:
     TS kappa, gamma, g, f_cor, pi_0, c_p, Int;
+    int Int_res;
 };
 
 } // namespace FunctionEnum

@@ -162,22 +162,22 @@ void ConvexPolyhedron3<Pc>::intersect_with( const ConvexPolyhedron3 &cp ) {
 
 // COMPRESSIBLE HESSIAN BOUNDARY
 template<class Pc> template<class Grid>
-void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void(TF,CI)> &f, TF weight ) const {
+void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void(TF,CI)> &f, TF weight, Pt home_position ) const {
     TODO;
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::ExpWmR2db<TF> &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void(TF,CI)> &f, TF weight ) const {
+void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::ExpWmR2db<TF> &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void(TF,CI)> &f, TF weight, Pt home_position ) const {
     TODO;
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::WmR2 &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void(TF,CI)> &f, TF weight ) const {
+void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::WmR2 &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void(TF,CI)> &f, TF weight, Pt home_position ) const {
     TODO;
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::Unit &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void(TF,CI)> &f, TF weight ) const {
+void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::Unit &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void(TF,CI)> &f, TF weight, Pt home_position ) const {
     //    // round parts
     //    if ( flat_surfaces.empty() ) {
     //        if ( sphere_radius >= 0 )
@@ -207,28 +207,28 @@ void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Con
 }
 
 template<class Pc> template<class Grid>
-void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::R2 &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void(TF,CI)> &f, TF weight ) const {
+void ConvexPolyhedron3<Pc>::for_each_boundary_measure( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::R2 &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const std::function<void(TF,CI)> &f, TF weight, Pt home_position ) const {
     TODO;
 }
 
 // COMPRESSIBLE HESSIAN BOUNDARY
 template<class Pc> template<class Fu, class Grid>
-void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const Fu &f, TF weight ) const {
+void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::CompressibleFunc<TF> &func, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const Fu &f, TF weight, Pt home_position ) const {
     TODO;
 }
 
 template<class Pc> template<class Fu, class Grid>
-void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::ExpWmR2db<TF> &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const Fu &f, TF weight ) const {
+void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::ExpWmR2db<TF> &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const Fu &f, TF weight, Pt home_position ) const {
     TODO;
 }
 
 template<class Pc> template<class Fu, class Grid>
-void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::WmR2 &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const Fu &f, TF weight ) const {
+void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::WmR2 &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const Fu &f, TF weight, Pt home_position ) const {
     TODO;
 }
 
 template<class Pc> template<class Fu, class Grid>
-void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::Unit &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const Fu &f, TF weight ) const {
+void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::Unit &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const Fu &f, TF weight, Pt home_position ) const {
     // flat parts
     for( const Face &fp : faces ) {
         BoundaryItem item;
@@ -271,7 +271,7 @@ void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
 }
 
 template<class Pc> template<class Fu, class Grid>
-void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::R2 &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const Fu &f, TF weight ) const {
+void ConvexPolyhedron3<Pc>::for_each_boundary_item( const SpaceFunctions::Constant<TF> &sf, const FunctionEnum::R2 &/*rf*/, const Grid &grid, const std::size_t nb_diracs, const Pt* positions, const Fu &f, TF weight, Pt home_position ) const {
     TODO;
 }
 

@@ -6,6 +6,8 @@
 #include <tuple>
 #include <vector>
 #include <Eigen/Dense>
+#include <iostream>
+#include <iomanip>
 
 template<typename TS>
 inline void build_legendre_table(int N,
@@ -142,16 +144,16 @@ struct CompressibleFunc {
 
     // Inverse Transform Functions
     template<class PT>
-    inline auto seed_inverse(PT c) const {
+    inline auto seed_inverse(PT y) const {
         constexpr std::size_t dim = sdot::point_dimension<PT>::value;
         if constexpr (dim == 2) {
-            TS z1 = - c[0] / c[1];
-            TS z2 = - TS(1) / (TS(2) * c[1]);
+            TS z1 = - y[0] / y[1];
+            TS z2 = - TS(1) / (TS(2) * y[1]);
             return sdot::Point2<TS>(z1, z2);
         } else if constexpr (dim == 3) {
-            TS z1 = - c[0] / c[2];
-            TS z2 = - c[1] / c[2];
-            TS z3 = - TS(1) / (TS(2) * c[2]);
+            TS z1 = - y[0] / y[2];
+            TS z2 = - y[1] / y[2];
+            TS z3 = - TS(1) / (TS(2) * y[2]);
             return sdot::Point3<TS>(z1, z2, z3);
         } else {
             static_assert(dim == 2 || dim == 3, "Only 2D and 3D point types are supported.");
@@ -267,8 +269,8 @@ struct CompressibleFunc {
         double x1 = p[0];
         double cross = -zi[1] * zk[0] + zi[0] * zk[1];
         double term = x1 * dz + f_cor * f_cor * cross;
-        double denom = zi[1] * zi[1] * zk[1] * zk[1];
-        return std::sqrt((g * g * dz * dz + term * term) / denom);
+        double denom = std::abs(zi[1] * zk[1]); 
+        return std::sqrt((g * g * dz * dz + term * term)) / denom;
     }   
 
     // Integrands
@@ -362,12 +364,29 @@ struct CompressibleFunc {
 
         // push‐forward tangent v = DPhi·dp
         TS v1 = inv_f2 * dxdt;
-        TS v2 = -pt[0] * inv_f2 * dxdt + inv_g * dydt;
+        
+        // --- Deconstruct the v2 calculation for analysis ---
+        TS v2_term1 = -pt[0] * inv_f2 * dxdt;
+        TS v2_term2 = inv_g * dydt;
+        TS v2 = v2_term1 + v2_term2;
 
         // arclength element
         TS ds = std::hypot(v1, v2);
 
-        return (f_star_prime_value / grad_norm) * ds;
+        double result = (f_star_prime_value / grad_norm) * ds;
+
+        // std::ostringstream debugStream;
+        // debugStream << " w: " << w << "\n";
+        // debugStream << " c(pt,z^i): " << cfunc_pt << "\n";
+        // debugStream << " f_star_prime_value: " << f_star_prime_value << "\n";
+        // debugStream << " grad_norm: " << grad_norm << "\n";
+        // debugStream << " ds: " << ds << "\n";
+        // debugStream << " result: " << result << "\n";
+        // debugStream << "------------------------------------" << std::endl;
+
+        // std::cout << debugStream.str() << std::flush;
+
+        return result;
     }
 
     // storage for the table

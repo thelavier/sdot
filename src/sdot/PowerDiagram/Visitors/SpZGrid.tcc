@@ -626,6 +626,15 @@ int SpZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, TI num,
                 stat.add( "used_another_box", used_another_box );
                 #endif // WANT_STAT
 
+                if ( !custom_replicas_for_seed.empty() && num_dirac_0 < custom_replicas_for_seed.size() ) {
+                    const auto& replicas_for_this_seed = custom_replicas_for_seed[ num_dirac_0 ];
+                    for( const auto& rep : replicas_for_this_seed ) {
+                        // For each custom replica, we cut the Laguerre cell.
+                        // We use the pre-calculated position and weight directly.
+                        plane_cut( lc, c0, w0, rep.position, rep.weight, rep.replica_id );
+                    }
+                }
+
                 if ( allow_mpi && interrupted )
                     continue;
 

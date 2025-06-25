@@ -4,6 +4,7 @@
 #include "../Integration/FunctionEnum.h"
 #include "../Support/ThreadPool.h"
 #include <vector>
+#include <map>
 
 namespace sdot {
 
@@ -15,6 +16,18 @@ TF get_boundary_integral( Grid &grid, Bounds &bounds, const Pt *positions, const
     using std::sqrt;
     using std::cos;
     using std::sin;
+    using TI = typename Grid::TI;
+    using std::sqrt;
+
+    using CustomReplica = typename Grid::CustomReplica;
+    std::map<TI, const CustomReplica*> replica_map;
+    if ( !grid.custom_replicas_for_seed.empty() ) {
+        for ( const auto& replica_list : grid.custom_replicas_for_seed ) {
+            for ( const auto& rep : replica_list ) {
+                replica_map[ rep.replica_id ] = &rep;
+            }
+        }
+    }
 
     // get connectivity of particles with ext surfaces. TODO: optimize
     struct DataPerThread {
@@ -73,9 +86,27 @@ TF get_boundary_integral( Grid &grid, Bounds &bounds, const Pt *positions, const
 
         if ( dpt_m.is_ext[ num_dirac ] ) {
             std::vector<std::size_t> &n_ng = dpt_m.neighbors[ num_dirac ];
+            // We need a helper lambda to get the correct centroid, whether it's real or a replica.
+            auto get_centroid_for = [&]( TI id ) -> std::pair<Pt, bool> {
+                // Check if it's a custom replica
+                auto it = replica_map.find( id );
+                if ( it != replica_map.end() ) {
+                    return { it->second->centroid, true }; // Return stored centroid
+                }
+                // Check if it's a real dirac
+                if ( id < nb_diracs ) {
+                    DataPerThread &dpt = dpts[ thread_num_of_dirac[ id ] ];
+                    if ( dpt.is_ext[ id ] ) {
+                        return { dpt.centroids[ id ], true };
+                    }
+                }
+                // It's a neighbor we don't have centroid info for (e.g., simple replica or non-ext)
+                return { Pt::Zero(), false };
+            };
+
+            // Filter out neighbors we can't process
             for( std::size_t n = 0; n < n_ng.size(); ++n ) {
-                DataPerThread &dpt_n = dpts[ thread_num_of_dirac[ n_ng[ n ] ] ];
-                if ( dpt_n.is_ext[ n_ng[ n ] ] == false ) {
+                if ( get_centroid_for( n_ng[ n ] ).second == false ) {
                     n_ng[ n-- ] = n_ng.back();
                     n_ng.pop_back();
                 }

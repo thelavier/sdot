@@ -410,29 +410,29 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
         // Find the original index of the neighbor
         TI original_neighbor_idx = num_dirac_1 % nb_diracs;
 
-        // FOCUS DEBUG OUTPUT on the interaction between dirac 0 and dirac 1 (and its replicas)
-        if ( (zi == func.seed_inverse(positions[0]) && original_neighbor_idx == 1) || (zi == func.seed_inverse(positions[1]) && original_neighbor_idx == 0) ) {
-            std::cout << std::scientific << std::setprecision(12);
-            std::cout << "\n/----------------- Processing Boundary Segment -----------------\\" << std::endl;
+        // // FOCUS DEBUG OUTPUT on the interaction between dirac 0 and dirac 1 (and its replicas)
+        // if ( (zi == func.seed_inverse(positions[0]) && original_neighbor_idx == 1) || (zi == func.seed_inverse(positions[1]) && original_neighbor_idx == 0) ) {
+        //     std::cout << std::scientific << std::setprecision(12);
+        //     std::cout << "\n/----------------- Processing Boundary Segment -----------------\\" << std::endl;
             
-            // Print info about the home dirac
-            int home_dirac_idx = -1;
-            if (zi == func.seed_inverse(positions[0])) home_dirac_idx = 0;
-            if (zi == func.seed_inverse(positions[1])) home_dirac_idx = 1;
-            std::cout << "| Home Dirac #" << home_dirac_idx << ": " << std::endl;
-            std::cout << "|   -> y_i: (" << yi[0] << ", " << yi[1] << ")" << std::endl;
-            std::cout << "|   -> z_i: (" << zi[0] << ", " << zi[1] << ")" << std::endl;
-            std::cout << "|   -> w_i: " << w << std::endl;
+        //     // Print info about the home dirac
+        //     int home_dirac_idx = -1;
+        //     if (zi == func.seed_inverse(positions[0])) home_dirac_idx = 0;
+        //     if (zi == func.seed_inverse(positions[1])) home_dirac_idx = 1;
+        //     std::cout << "| Home Dirac #" << home_dirac_idx << ": " << std::endl;
+        //     std::cout << "|   -> y_i: (" << yi[0] << ", " << yi[1] << ")" << std::endl;
+        //     std::cout << "|   -> z_i: (" << zi[0] << ", " << zi[1] << ")" << std::endl;
+        //     std::cout << "|   -> w_i: " << w << std::endl;
 
-            // Print info about the neighbor that defines this boundary
-            bool is_replica = (num_dirac_1 >= nb_diracs);
-            if (is_replica) {
-                std::cout << "| Neighbor is a REPLICA of Dirac #" << original_neighbor_idx << " (Global ID: " << num_dirac_1 << ")" << std::endl;
-            } else {
-                std::cout << "| Neighbor is the REAL Dirac #" << original_neighbor_idx << std::endl;
-            }
-        }
-        // --- END: New Debug Block ---
+        //     // Print info about the neighbor that defines this boundary
+        //     bool is_replica = (num_dirac_1 >= nb_diracs);
+        //     if (is_replica) {
+        //         std::cout << "| Neighbor is a REPLICA of Dirac #" << original_neighbor_idx << " (Global ID: " << num_dirac_1 << ")" << std::endl;
+        //     } else {
+        //         std::cout << "| Neighbor is the REAL Dirac #" << original_neighbor_idx << std::endl;
+        //     }
+        // }
+        // // --- END: New Debug Block ---
 
         if ( num_dirac_1 == TI( -1 ) ) {
             item.measure += 0;
@@ -442,30 +442,30 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
             TI d_num_dirac_1 = num_dirac_1 / nb_diracs;
             auto yk = grid.sym( positions[ m_num_dirac_1 ], int( d_num_dirac_1 ) - 1 );
 
-            // --- START: Recommended Diagnostic Block ---
-            int home_dirac_idx = -1;
-            if (zi == func.seed_inverse(positions[0])) home_dirac_idx = 0;
-            if (zi == func.seed_inverse(positions[1])) home_dirac_idx = 1;
+            // // --- START: Recommended Diagnostic Block ---
+            // int home_dirac_idx = -1;
+            // if (zi == func.seed_inverse(positions[0])) home_dirac_idx = 0;
+            // if (zi == func.seed_inverse(positions[1])) home_dirac_idx = 1;
 
-            if ( (home_dirac_idx == 0 && m_num_dirac_1 == 1) || (home_dirac_idx == 1 && m_num_dirac_1 == 0) ) {
-                // This check is already in your code, we add more logging here.
-                bool is_replica = (num_dirac_1 >= nb_diracs);
-                if (is_replica) { // Only print this extra info for the replica case
-                    std::cout << "| Diagnostic Data:" << std::endl;
-                    std::cout << "|   -> Home Position yi: (" << yi[0] << ", " << yi[1] << ")" << std::endl;
-                    std::cout << "|   -> Replica Position yk: (" << yk[0] << ", " << yk[1] << ")" << std::endl;
+            // if ( (home_dirac_idx == 0 && m_num_dirac_1 == 1) || (home_dirac_idx == 1 && m_num_dirac_1 == 0) ) {
+            //     // This check is already in your code, we add more logging here.
+            //     bool is_replica = (num_dirac_1 >= nb_diracs);
+            //     if (is_replica) { // Only print this extra info for the replica case
+            //         std::cout << "| Diagnostic Data:" << std::endl;
+            //         std::cout << "|   -> Home Position yi: (" << yi[0] << ", " << yi[1] << ")" << std::endl;
+            //         std::cout << "|   -> Replica Position yk: (" << yk[0] << ", " << yk[1] << ")" << std::endl;
                     
-                    // Calculate and print the displacement vector
-                    auto displacement = yk - yi;
-                    std::cout << "|   -> Displacement (yk - yi): (" << displacement[0] << ", " << displacement[1] << ")" << std::endl;
+            //         // Calculate and print the displacement vector
+            //         auto displacement = yk - yi;
+            //         std::cout << "|   -> Displacement (yk - yi): (" << displacement[0] << ", " << displacement[1] << ")" << std::endl;
                     
-                    // Print the indices used to generate the replica
-                    std::cout << "|   -> grid.sym call params:" << std::endl;
-                    std::cout << "|      -> Original Neighbor Index (m_num_dirac_1): " << m_num_dirac_1 << std::endl;
-                    std::cout << "|      -> Domain Index (d_num_dirac_1 - 1): " << int(d_num_dirac_1) - 1 << std::endl;
-                }
-            }
-            // --- END: Recommended Diagnostic Block ---
+            //         // Print the indices used to generate the replica
+            //         std::cout << "|   -> grid.sym call params:" << std::endl;
+            //         std::cout << "|      -> Original Neighbor Index (m_num_dirac_1): " << m_num_dirac_1 << std::endl;
+            //         std::cout << "|      -> Domain Index (d_num_dirac_1 - 1): " << int(d_num_dirac_1) - 1 << std::endl;
+            //     }
+            // }
+            // // --- END: Recommended Diagnostic Block ---
 
             TF dist = norm_2(yi - yk);
             auto zk = func.seed_inverse(yk);
@@ -485,19 +485,19 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
             }
             item.measure += prefactor * integral_value;
 
-            // --- START: New Debug Block ---
-            if (zi == func.seed_inverse(positions[0])) home_dirac_idx = 0;
-            if (zi == func.seed_inverse(positions[1])) home_dirac_idx = 1;
+            // // --- START: New Debug Block ---
+            // if (zi == func.seed_inverse(positions[0])) home_dirac_idx = 0;
+            // if (zi == func.seed_inverse(positions[1])) home_dirac_idx = 1;
 
-            if ( (home_dirac_idx == 0 && m_num_dirac_1 == 1) || (home_dirac_idx == 1 && m_num_dirac_1 == 0) ) {
-                std::cout << "| Neighbor data used in integral:" << std::endl;
-                std::cout << "|   -> y_k: (" << yk[0] << ", " << yk[1] << ")" << std::endl;
-                std::cout << "|   -> z_k: (" << zk[0] << ", " << zk[1] << ")" << std::endl;
-                std::cout << "| Calculation Result:" << std::endl;
-                std::cout << "|   -> FINAL integral_value = " << integral_value << std::endl;
-                std::cout << "|   -> FINAL item.measure = " << item.measure << std::endl;
-                std::cout << "\\-------------------------------------------------------------/" << std::endl;
-            }
+            // if ( (home_dirac_idx == 0 && m_num_dirac_1 == 1) || (home_dirac_idx == 1 && m_num_dirac_1 == 0) ) {
+            //     std::cout << "| Neighbor data used in integral:" << std::endl;
+            //     std::cout << "|   -> y_k: (" << yk[0] << ", " << yk[1] << ")" << std::endl;
+            //     std::cout << "|   -> z_k: (" << zk[0] << ", " << zk[1] << ")" << std::endl;
+            //     std::cout << "| Calculation Result:" << std::endl;
+            //     std::cout << "|   -> FINAL integral_value = " << integral_value << std::endl;
+            //     std::cout << "|   -> FINAL item.measure = " << item.measure << std::endl;
+            //     std::cout << "\\-------------------------------------------------------------/" << std::endl;
+            // }
 
         }
 

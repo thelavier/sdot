@@ -57,6 +57,7 @@ public:
         TF weight;         // The pre-calculated psi_rep weight
         TI original_index; // The global index (0, 1, ...) of the seed this is a replica of
         TI replica_id;     // A unique ID for this replica to be used by the integral routine
+        Pt centroid;
     };
     std::vector<std::vector<CustomReplica>> custom_replicas_for_seed;
 

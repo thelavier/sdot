@@ -8,6 +8,7 @@
 #include <vector>
 #include <iostream>
 #include <iomanip>
+#include <map>
 
 namespace sdot {
 
@@ -33,8 +34,17 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
     #ifdef PD_WANT_STAT
     ++stat.num_phase;
     #endif
-    
-    
+
+    using CustomReplica = typename Grid::CustomReplica;
+    std::map<TI, const CustomReplica*> replica_map;
+    if ( !grid.custom_replicas_for_seed.empty() ) {
+        for ( const auto& replica_list : grid.custom_replicas_for_seed ) {
+            for ( const auto& rep : replica_list ) {
+                replica_map[ rep.replica_id ] = &rep;
+            }
+        }
+    }
+
     int nb_threads = thread_pool.nb_threads();
     std::vector<DataPerThread> data_per_threads( nb_threads, nb_diracs / nb_threads );
     std::vector<std::pair<int,TI>> pos_in_loc_matrices( nb_diracs ); // num dirac => num_thread, num sub row
@@ -61,41 +71,33 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
                 if ( num_dirac_0 == num_dirac_1 ) {
                     der_0 += coeff * boundary_measure / sqrt( d0_weight );
                 } else {
-                    TI m_num_dirac_1 = num_dirac_1 % nb_diracs, d_num_dirac_1 = num_dirac_1 / nb_diracs;
-                    Pt d1_center = grid.sym( positions[ m_num_dirac_1 ], int( d_num_dirac_1 ) - 1 );
-                    //if ( std::size_t nu = num_dirac_1 / nb_diracs )
-                    //    TODO; // d1_center = transformation( _tranformations[ nu - 1 ], d1_center );
+                    Pt d1_center;
+                    TI m_num_dirac_1;
+
+                    // Check if the neighbor is a custom, manually-defined replica
+                    auto it = replica_map.find( num_dirac_1 );
+                    if ( it != replica_map.end() ) {
+                        // Use the pre-calculated data directly from our map.
+                        const CustomReplica* rep = it->second;
+                        d1_center = rep->position;
+                        m_num_dirac_1 = rep->original_index;
+                    } else {
+                        // Use the old logic as a fallback for backward compatibility.
+                        m_num_dirac_1 = num_dirac_1 % nb_diracs;
+                        TI d_num_dirac_1 = num_dirac_1 / nb_diracs;
+                        d1_center = grid.sym( positions[ m_num_dirac_1 ], int( d_num_dirac_1 ) - 1 );
+                    }
 
                     if ( TF dist = norm_2( d0_center - d1_center ) ) {
                         TF b_der = coeff * boundary_measure / dist;
-
-                        // // --- Start of debug block ---
-                        // int d0_idx = num_dirac_0;
-                        // int d1_idx = num_dirac_1 % nb_diracs;
-
-                        // // We focus on H(0,1) and H(1,0) to avoid excessive output.
-                        // if ( ( d0_idx == 0 && d1_idx == 1 ) || ( d0_idx == 1 && d1_idx == 0 ) ) {
-                        //     std::cout << std::scientific << std::setprecision(16);
-                        //     std::cout << "--- Calculating contribution to H(" << d0_idx << "," << d1_idx << ") ---" << std::endl;
-                        //     std::cout << "  Boundary between dirac " << num_dirac_0 
-                        //             << " and global dirac " << num_dirac_1 
-                        //             << " (orig index " << d1_idx << ")" << std::endl;
-                        //     std::cout << "  d0_center: (" << d0_center[0] << ", " << d0_center[1] << ")" << std::endl;
-                        //     std::cout << "  d1_center: (" << d1_center[0] << ", " << d1_center[1] << ")" << std::endl;
-                        //     std::cout << "  boundary_measure: " << boundary_measure << std::endl;
-                        //     std::cout << "  dist: " << dist << std::endl;
-                        //     std::cout << "  => b_der value to be summed: " << -b_der << std::endl;
-                        // }
-                        // // --- End of debug block ---
-
-                        dpt.row_items.emplace_back( m_num_dirac_1, - b_der );
+                        dpt.row_items.emplace_back( m_num_dirac_1, -b_der );
                         der_0 += b_der;
                     }
                 }
             }, weights[ num_dirac_0 ], d0_center );
 
             der_0 += cp.integration_der_wrt_weight( space_func, radial_func.func_for_final_cp_integration(), d0_weight );
-} );
+        } );
         dpt.row_items.emplace_back( num_dirac_0, der_0 );
         std::sort( dpt.row_items.begin(), dpt.row_items.end() );
 

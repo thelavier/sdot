@@ -69,25 +69,6 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
                     if ( TF dist = norm_2( d0_center - d1_center ) ) {
                         TF b_der = coeff * boundary_measure / dist;
 
-                        // // --- Start of debug block ---
-                        // int d0_idx = num_dirac_0;
-                        // int d1_idx = num_dirac_1 % nb_diracs;
-
-                        // // We focus on H(0,1) and H(1,0) to avoid excessive output.
-                        // if ( ( d0_idx == 0 && d1_idx == 1 ) || ( d0_idx == 1 && d1_idx == 0 ) ) {
-                        //     std::cout << std::scientific << std::setprecision(16);
-                        //     std::cout << "--- Calculating contribution to H(" << d0_idx << "," << d1_idx << ") ---" << std::endl;
-                        //     std::cout << "  Boundary between dirac " << num_dirac_0 
-                        //             << " and global dirac " << num_dirac_1 
-                        //             << " (orig index " << d1_idx << ")" << std::endl;
-                        //     std::cout << "  d0_center: (" << d0_center[0] << ", " << d0_center[1] << ")" << std::endl;
-                        //     std::cout << "  d1_center: (" << d1_center[0] << ", " << d1_center[1] << ")" << std::endl;
-                        //     std::cout << "  boundary_measure: " << boundary_measure << std::endl;
-                        //     std::cout << "  dist: " << dist << std::endl;
-                        //     std::cout << "  => b_der value to be summed: " << -b_der << std::endl;
-                        // }
-                        // // --- End of debug block ---
-
                         dpt.row_items.emplace_back( m_num_dirac_1, - b_der );
                         der_0 += b_der;
                     }

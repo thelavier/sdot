@@ -142,6 +142,16 @@ struct CompressibleFunc {
         return (x > 0) ? (1 / (gammap * (gammap + 1) * (gammap + 2))) * std::pow(kappa * gamma, 1 - gammap) * std::pow(x, gammap + 2) : 0.0;
     }
 
+    inline double fsd1_sf(double x) const {
+        double gammap = 1 / (1 - 1 / gamma);
+        return (x > 0) ? std::pow(x, gammap - 1) : 0.0;
+    }
+
+    inline double fs_sf(double x) const {
+        double gammap = 1 / (1 - 1 / gamma);
+        return (x > 0) ? std::pow(x, gammap) : 0.0;
+    }
+
     // Inverse Transform Functions
     template<class PT>
     inline auto seed_inverse(PT y) const {
@@ -283,7 +293,7 @@ struct CompressibleFunc {
         // Evaluate the cost function at pt.
         TS cfunc_pt = (*this)(pt, zi, w);
 
-        return fs(w - cfunc_pt);
+        return fs_sf(w - cfunc_pt);
     }
     // Internal Energy Inegrand
     inline TS ie_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, TS w) const
@@ -294,7 +304,7 @@ struct CompressibleFunc {
         // Evaluate the cost function at pt.
         TS cfunc_pt = (*this)(pt, zi, w);
 
-        return (w - cfunc_pt) * std::pow(fsd1(w - cfunc_pt), gamma);
+        return (w - cfunc_pt) * std::pow(fsd1_sf(w - cfunc_pt), gamma);
     }
     // Centroid Component 1
     inline TS ctd_0_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, TS w) const
@@ -305,7 +315,7 @@ struct CompressibleFunc {
         // Evaluate the cost function at pt.
         TS cfunc_pt = (*this)(pt, zi, w);
 
-        return pt[0] * fs(w - cfunc_pt);
+        return pt[0] * fs_sf(w - cfunc_pt);
     }
     // Centroid Component 2 Part 1
     inline TS ctd_1_1_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, TS w) const
@@ -316,7 +326,7 @@ struct CompressibleFunc {
         // Evaluate the cost function at pt.
         TS cfunc_pt = (*this)(pt, zi, w);
 
-        return pt[1] * fs(w - cfunc_pt);
+        return pt[1] * fs_sf(w - cfunc_pt);
     }
     // Centroid Component 2 Part 2
     inline TS ctd_1_2_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, TS w) const
@@ -327,7 +337,7 @@ struct CompressibleFunc {
         // Evaluate the cost function at pt.
         TS cfunc_pt = (*this)(pt, zi, w);
 
-        return pt[0] * pt[0] * fs(w - cfunc_pt);
+        return pt[0] * pt[0] * fs_sf(w - cfunc_pt);
     }
     // Hessian Volume Integrand
     inline TS hess_volume_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, TS w) const
@@ -338,7 +348,7 @@ struct CompressibleFunc {
         // Evaluate the cost function at pt.
         TS cfunc_pt = (*this)(pt, zi, w);
 
-        return fsd1(w - cfunc_pt);
+        return fsd1_sf(w - cfunc_pt);
     }
     // Hessian Boundary Integrand
     inline TS hess_bdry_integrand(TS t, const sdot::Point2<TS>& p0, const sdot::Point2<TS>& p1, const sdot::Point2<TS>& zi, const sdot::Point2<TS>& zk, TS w) const
@@ -349,7 +359,7 @@ struct CompressibleFunc {
         // Evaluate the cost function at pt.
         TS cfunc_pt = (*this)(pt, zi, w);
         double t_value = w - cfunc_pt;
-        double f_star_prime_value = fsd1(t_value);
+        double f_star_prime_value = fsd1_sf(t_value);
 
         // Evaluate the norm of the gradient of the cost function at pt. 
         TS grad_norm = hess_bdry_coeff(pt, zi, zk);

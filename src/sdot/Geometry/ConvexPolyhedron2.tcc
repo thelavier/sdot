@@ -5,6 +5,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <boost/math/quadrature/gauss_kronrod.hpp>
 
 #ifdef PD_WANT_STAT
 #include "../Support/Stat.h"
@@ -142,21 +143,25 @@ typename ConvexPolyhedron2<Pc>::TF ConvexPolyhedron2<Pc>::integration_der_wrt_we
             TF prefactor = z[1] * z[1] * normal[1] * norm_2(p1 - p0) / (func.f_cor * func.f_cor * func.g);
 
             if ( func.IntegralType() ) {
-                // Use prebuilt quadrature table
-                int Nq = func.IntegralResolution();
-                TF integral_value = TF(0);
-                for(int i = 0; i < Nq; ++i) {
-                    TF t = func.quad_nodes[i];
-                    TF quadw = func.quad_weights[i];
-                    integral_value += quadw * func.hess_volume_integrand(t, p0, p1, z, w);
-                }
+                auto integrand = [&](TF t) {
+                    return func.hess_volume_integrand(t, p0, p1, z, w);
+                };
 
-                // Apply the scaling AFTER the integration is complete
+                TF tolerance = std::pow(10.0, -static_cast<TF>(func.IntegralResolution())); // Desired relative tolerance
+                TF error;
+                TF integral_value = boost::math::quadrature::gauss_kronrod<TF, 15>::integrate(
+                    integrand, 
+                    TF(0.0), // Lower limit
+                    TF(1.0), // Upper limit
+                    5,       // Max recursion depth
+                    tolerance, 
+                    &error   // Stores the error estimate
+                );
+
+                // Apply the scaling 
                 double gammap = 1.0 / (1.0 - 1.0 / func.gamma);
                 TF kappa_scaling_factor = std::pow(func.kappa * func.gamma, 1 - gammap);
-                
                 integral_value *= kappa_scaling_factor;
-                
                 res -= prefactor / z[1] * integral_value ;
             } else {
                 // Evaluate the cost function at the endpoints.
@@ -428,23 +433,25 @@ void ConvexPolyhedron2<Pc>::for_each_boundary_item( const SpaceFunctions::Consta
             // Compute prefactor and common terms. 
             TF prefactor = 2 * dist;
 
-            // Use prebuilt quadrature table
-            int Nq = func.IntegralResolution();
-            TF integral_value = TF(0);
+            auto integrand = [&](TF t) {
+                return func.hess_bdry_integrand(t, p0, p1, zi, zk, w);
+            };
 
-            for(int i = 0; i < Nq; ++i) {
-                TF t = func.quad_nodes[i];
-                TF quadw = func.quad_weights[i];
-                TF integrand = func.hess_bdry_integrand(t, p0, p1, zi, zk, w);
-                integral_value += quadw * integrand;
-            }
+            TF tolerance = std::pow(10.0, -static_cast<TF>(func.IntegralResolution())); // Desired relative tolerance
+            TF error;
+            TF integral_value = boost::math::quadrature::gauss_kronrod<TF, 15>::integrate(
+                integrand, 
+                TF(0.0), // Lower limit
+                TF(1.0), // Upper limit
+                5,       // Max recursion depth
+                tolerance, 
+                &error   // Stores the error estimate
+            );
 
             // Apply the scaling AFTER the integration is complete
             double gammap = 1.0 / (1.0 - 1.0 / func.gamma);
             TF kappa_scaling_factor = std::pow(func.kappa * func.gamma, 1 - gammap);
-                
             integral_value *= kappa_scaling_factor;
-
             item.measure += prefactor * integral_value;
 
         }
@@ -1742,18 +1749,44 @@ void ConvexPolyhedron2<Pc>::add_centroid_contrib( Pt &ctd, TF &mea, const SpaceF
             TF prefactorctd22 = z[1] * normal[1] * norm_2(p1 - p0) / (2 * func.f_cor * func.f_cor * func.f_cor * func.f_cor * func.g * func.g);
 
             if ( func.IntegralType() ) {
-                // Use prebuilt quadrature table
-                int Nq = func.IntegralResolution();
-                TF integral_value_1 = TF(0);
-                TF integral_value_2 = TF(0);
-                TF integral_value_3 = TF(0);
-                for(int i = 0; i < Nq; ++i) {
-                    TF t = func.quad_nodes[i];
-                    TF quadw = func.quad_weights[i];
-                    integral_value_1 += quadw * func.ctd_0_integrand(t, p0, p1, z, w);
-                    integral_value_2 += quadw * func.ctd_1_1_integrand(t, p0, p1, z, w);
-                    integral_value_3 += quadw * func.ctd_1_2_integrand(t, p0, p1, z, w);
-                }
+                auto integrand1 = [&](TF t) {
+                    return func.ctd_0_integrand(t, p0, p1, z, w);
+                };
+                auto integrand2 = [&](TF t) {
+                    return func.ctd_1_1_integrand(t, p0, p1, z, w);
+                };
+                auto integrand3 = [&](TF t) {
+                    return func.ctd_1_2_integrand(t, p0, p1, z, w);
+                };
+
+                TF tolerance = std::pow(10.0, -static_cast<TF>(func.IntegralResolution())); // Desired relative tolerance
+                TF error_1;
+                TF error_2;
+                TF error_3;
+                TF integral_value_1 = boost::math::quadrature::gauss_kronrod<TF, 15>::integrate(
+                    integrand1, 
+                    TF(0.0), // Lower limit
+                    TF(1.0), // Upper limit
+                    5,       // Max recursion depth
+                    tolerance, 
+                    &error_1   // Stores the error estimate
+                );
+                TF integral_value_2 = boost::math::quadrature::gauss_kronrod<TF, 15>::integrate(
+                    integrand2, 
+                    TF(0.0), // Lower limit
+                    TF(1.0), // Upper limit
+                    5,       // Max recursion depth
+                    tolerance, 
+                    &error_2   // Stores the error estimate
+                );
+                TF integral_value_3 = boost::math::quadrature::gauss_kronrod<TF, 15>::integrate(
+                    integrand3, 
+                    TF(0.0), // Lower limit
+                    TF(1.0), // Upper limit
+                    5,       // Max recursion depth
+                    tolerance, 
+                    &error_3   // Stores the error estimate
+                );
 
                 // Apply the scaling AFTER the integration is complete
                 double gammap = 1.0 / (1.0 - 1.0 / func.gamma);
@@ -1975,21 +2008,25 @@ typename Pc::TF ConvexPolyhedron2<Pc>::internal_energy( const SpaceFunctions::Co
             TF prefactor = z[1] * normal[1] * (func.gamma - 1) / (func.f_cor * func.f_cor * func.g * (2 * func.gamma - 1)) * norm_2(p1 - p0);
             
             if ( func.IntegralType() ) {
-                // Use prebuilt quadrature table
-                int Nq = func.IntegralResolution();
-                TF integral_value = TF(0);
-                for(int i = 0; i < Nq; ++i) {
-                    TF t = func.quad_nodes[i];
-                    TF quadw = func.quad_weights[i];
-                    integral_value += quadw * func.ie_integrand(t, p0, p1, z, w);
-                }
+                auto integrand = [&](TF t) {
+                    return func.ie_integrand(t, p0, p1, z, w);
+                };
 
-                // Apply the scaling AFTER the integration is complete
+                TF tolerance = std::pow(10.0, -static_cast<TF>(func.IntegralResolution())); // Desired relative tolerance
+                TF error;
+                TF integral_value = boost::math::quadrature::gauss_kronrod<TF, 15>::integrate(
+                    integrand, 
+                    TF(0.0), // Lower limit
+                    TF(1.0), // Upper limit
+                    5,       // Max recursion depth
+                    tolerance, 
+                    &error   // Stores the error estimate
+                );
+
+                // Apply the scaling 
                 double gammap = 1.0 / (1.0 - 1.0 / func.gamma);
                 TF kappa_scaling_factor = std::pow(func.kappa * func.gamma, (1 - gammap) * func.gamma);
-                
                 integral_value *= kappa_scaling_factor;
-
                 ie += prefactor * integral_value ;
             } else {
                 // Evaluate the cost function at the endpoints.
@@ -2046,21 +2083,25 @@ typename Pc::TF ConvexPolyhedron2<Pc>::integration( const SpaceFunctions::Consta
             TF prefactor = z[1] * z[1] * normal[1] * norm_2(p1 - p0) / (func.f_cor * func.f_cor * func.g);
 
             if ( func.IntegralType() ){
-                // Use prebuilt quadrature table
-                int Nq = func.IntegralResolution();
-                TF integral_value = TF(0);
-                for(int i = 0; i < Nq; ++i) {
-                    TF t = func.quad_nodes[i];
-                    TF quadw = func.quad_weights[i];
-                    integral_value += quadw * func.volume_integrand(t, p0, p1, z, w);
-                }
+                auto integrand = [&](TF t) {
+                    return func.volume_integrand(t, p0, p1, z, w);
+                };
 
-                // Apply the scaling AFTER the integration is complete
+                TF tolerance = std::pow(10.0, -static_cast<TF>(func.IntegralResolution())); // Desired relative tolerance
+                TF error;
+                TF integral_value = boost::math::quadrature::gauss_kronrod<TF, 15>::integrate(
+                    integrand, 
+                    TF(0.0), // Lower limit
+                    TF(1.0), // Upper limit
+                    5,       // Max recursion depth
+                    tolerance, 
+                    &error   // Stores the error estimate
+                );
+
+                // Apply the scaling 
                 double gammap = 1.0 / (1.0 - 1.0 / func.gamma);
                 TF kappa_scaling_factor = (1 / gammap) * std::pow(func.kappa * func.gamma, 1 - gammap);
-                
                 integral_value *= kappa_scaling_factor;
-
                 vol -= prefactor / z[1] * integral_value ;
             } else {
 

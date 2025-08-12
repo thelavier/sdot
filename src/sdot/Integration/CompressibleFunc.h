@@ -35,7 +35,7 @@ struct CompressibleFunc {
             TF cexp2 = (p[1] - (p[0] * p[0]) / static_cast<TF>(2) / fc2) / static_cast<TF>(g);
             TF term1 = fc2 / static_cast<TF>(2) * (cexp1 - c[0]) * (cexp1 - c[0]);
             TF term2 = static_cast<TF>(g) * cexp2;
-            return (term1 + term2) / c[1] - static_cast<TF>(c_p * pi_0);
+            return (term1 + term2) / c[1];
         } else if constexpr (dim == 3) {
             // 3D implementation:
             // Ensure the third coordinate of the seed is non-zero.
@@ -77,10 +77,6 @@ struct CompressibleFunc {
     template<class TF>
     void span_for_viz( const TF &f, TS w ) const {
         // Optionally, define a span for visualization.
-    }
-
-    // Construct and immediately build the GL table
-    CompressibleFunc(TS kappa_, TS gamma_, TS g_, TS f_cor_, TS pi_0_, TS c_p_, TS Int_, int Int_res_) : kappa(kappa_), gamma(gamma_), g(g_), f_cor(f_cor_), pi_0(pi_0_), c_p(c_p_), Int(Int_), Int_res(Int_res_) {
     }
 
     // F Star Functions
@@ -135,17 +131,18 @@ struct CompressibleFunc {
     template<class PT>
     inline double weight_inverse(double psi, PT z) const {
         constexpr std::size_t dim = sdot::point_dimension<PT>::value;
+        double psi_prime = psi + this->w_offset;
         if constexpr (dim == 2) {
             double term1 = (z[0] / (2 * z[1])) * (z[0] / (2 * z[1]));
             double term2 = (1 / (2 * z[1])) * (1 / (2 * z[1]));
             double term3 = (f_cor * f_cor / (2 * z[1])) * z[0] * z[0];
-            return psi - (term1 + term2 - term3 + c_p * pi_0);
+            return (psi_prime) - (term1 + term2 - term3);
         } else if constexpr (dim == 3) {
             double term1 = (z[0] / (2 * z[2])) * (z[0] / (2 * z[2]));
             double term2 = (z[1] / (2 * z[2])) * (z[1] / (2 * z[2]));
             double term3 = (1 / (2 * z[2])) * (1 / (2 * z[2]));
             double term4 = (f_cor * f_cor / (2 * z[2])) * (z[0] * z[0] + z[1] * z[1]);
-            return psi - (term1 + term2 + term3 - term4);
+            return psi_prime - (term1 + term2 + term3 - term4);
         } else {
             static_assert(dim == 2 || dim == 3, "Only 2D and 3D point types are supported.");
         }
@@ -361,11 +358,8 @@ struct CompressibleFunc {
         return result;
     }
 
-    // storage for the table
-    std::vector<TS> quad_nodes, quad_weights;
-
     // Parameters for the cost function class:
-    TS kappa, gamma, g, f_cor, pi_0, c_p, Int;
+    TS kappa, gamma, g, f_cor, pi_0, c_p, w_offset, Int;
     int Int_res;
 };
 
